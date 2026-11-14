@@ -1,0 +1,25 @@
+{
+  "name": "agrosync",
+  "private": true,
+  "version": "1.0.0",
+  "description": "AgroSync – CitizenTech Rural: frete coletivo, crédito justo e alertas para pequenos produtores.",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c green,cyan \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
+    "build": "npm run build -w apps/web && npm run build -w apps/api",
+    "start": "npm run start -w apps/api",
+    "test": "npm run test -w apps/api",
+    "typecheck": "npm run typecheck -w apps/api && npm run typecheck -w apps/web",
+    "seed": "npm run seed -w apps/api",
+    "sim:sensores": "npm run sim:sensores -w apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

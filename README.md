@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.jpg" alt="AgroSync" width="180">
+  <img src="docs/assets/logo.jpg" alt="AgroSync" width="160">
 </p>
 
 <h1 align="center">AgroSync – CitizenTech Rural</h1>
@@ -19,23 +19,15 @@
 ## Sumário
 
 - [O problema](#o-problema)
-- [A solução](#a-solução)
+- [O que o sistema faz](#o-que-o-sistema-faz)
+- [Como rodar](#como-rodar)
+- [Roteiro de demonstração](#roteiro-de-demonstração)
 - [System design](#system-design)
-  - [Visão geral da arquitetura](#visão-geral-da-arquitetura)
-  - [Componentes por camada](#componentes-por-camada)
-  - [Sincronização offline-first](#sincronização-offline-first)
-  - [Frete coletivo: do registro ao pagamento](#frete-coletivo-do-registro-ao-pagamento)
-  - [Ciclo de vida da ordem de coleta](#ciclo-de-vida-da-ordem-de-coleta)
-  - [Inteligência artificial](#inteligência-artificial)
-  - [Sistema de alertas](#sistema-de-alertas)
-  - [Modelo de dados](#modelo-de-dados)
-  - [Segurança, privacidade e acessibilidade](#segurança-privacidade-e-acessibilidade)
-  - [Decisões técnicas](#decisões-técnicas)
+- [Confiabilidade: cenários testados](#confiabilidade-cenários-testados)
+- [Estrutura do código](#estrutura-do-código)
+- [Simulado x real](#simulado-x-real)
 - [As 8 áreas da solução](#as-8-áreas-da-solução)
-- [Mapas mentais](#mapas-mentais)
-- [Site do projeto](#site-do-projeto)
 - [Equipe](#equipe)
-- [Licença](#licença)
 
 ---
 
@@ -43,328 +35,373 @@
 
 No campo, a conectividade é instável, o frete individual sai caro para volumes pequenos e o crédito bancário não chega a quem não tem histórico formal. O resultado é perda de perecíveis na porteira e dependência de atravessadores.
 
-## A solução
+## O que o sistema faz
 
-O **AgroSync** é uma plataforma *offline-first* que permite ao pequeno produtor:
+| Para quem | Funcionalidade |
+|---|---|
+| **Produtor** | Registra a colheita por **voz** ("colhi 300 quilos de tomate") ou por **ícones**, mesmo **offline**: o registro fica no celular e sobe sozinho quando o sinal volta. |
+| | Pede frete; o sistema junta vizinhos com o mesmo destino em até 48 h num **caminhão coletivo** e mostra quanto ele economiza. |
+| | Mostra o **QR Code** para o motorista na coleta e paga sua parte do frete via **Pix**. |
+| | Vê seu **AgroScore** (crédito alternativo), com os fatores que ajudam ou pesam contra. |
+| | Recebe **alertas** de carga, coleta, pagamento, clima severo, estradas bloqueadas e solo seco (sensor). |
+| | Usa tudo também pelo **bot** de WhatsApp / SMS / USSD, sem smartphone. |
+| **Motorista** | Vê cargas disponíveis, aceita, segue a rota no mapa, faz **check-in por QR** (câmera ou código) e confirma a entrega. |
+| **Cooperativa** | Painel com volumes por produto, município e mês, economia gerada, cargas e pedidos; agrupa pedidos sob demanda; registra **bloqueios de estrada** no mapa; acompanha os webhooks Pix. |
 
-- registrar a colheita em **menos de 1 minuto**, por voz ou ícones, sem 4G;
-- dividir o caminhão com vizinhos (frete coletivo por IA), com **até 60% de economia**;
-- receber o rateio do frete e os pagamentos via **Pix**;
-- acessar **microcrédito** pelo AgroScore, um modelo de risco alternativo;
-- receber **alertas** de fechamento de carga, clima severo e bloqueio de estradas.
+---
 
-Alinhado aos **ODS 2** (Fome Zero) e **ODS 12** (Consumo e Produção Responsáveis).
+## Como rodar
+
+Requisitos: **Node.js 22.13 ou superior** (usa o SQLite nativo do Node, sem dependências nativas para compilar).
+
+```bash
+git clone https://github.com/Codebynaty/agrosync.git
+cd agrosync
+npm install
+```
+
+**Desenvolvimento** (API com recarga automática + front-end Vite):
+
+```bash
+npm run dev
+```
+
+- App: http://localhost:5173
+- API: http://localhost:3333/api/health
+
+**Produção** (a API serve o PWA compilado numa única porta):
+
+```bash
+npm run build
+JWT_SECRET=um-segredo-longo NODE_ENV=production npm start
+# abre em http://localhost:3333
+```
+
+Na primeira execução o banco é criado em `data/agrosync.db` e preenchido com ~6 meses de histórico de demonstração.
+Para recriar do zero: `npm run seed -- --reset`.
+
+**Testes:**
+
+```bash
+npm test
+```
+
+**Simulador de sensores IoT** (gateway LoRaWAN enviando umidade e temperatura, com a API rodando):
+
+```bash
+npm run sim:sensores
+```
+
+Variáveis de ambiente: veja [`.env.example`](.env.example).
+
+### Contas de demonstração
+
+O login é por código de 6 dígitos enviado ao celular. Na demonstração não há SMS real, então o código aparece na tela, e a tela de login tem botões "Entrar como".
+
+| Perfil | Nome | Telefone |
+|---|---|---|
+| Produtora | Ana Souza (Ibiúna) | (11) 90000-0001 |
+| Produtor | Benedito Lima (Ibiúna) | (11) 90000-0002 |
+| Produtora | Carla Mendes (Piedade) | (11) 90000-0003 |
+| Produtor | Dirceu Rocha (Mairinque) | (11) 90000-0004 |
+| Produtora | Elza Nogueira (São Roque) | (11) 90000-0005 |
+| Produtor | Fábio Tanaka (Cotia) | (11) 90000-0006 |
+| Motorista | João Pereira | (11) 90000-0011 |
+| Motorista | Marcos Silva | (11) 90000-0012 |
+| Cooperativa | Cooperativa Agro Ibiúna | (11) 90000-0021 |
+
+Todos os nomes, telefones e propriedades são fictícios.
+
+## Roteiro de demonstração
+
+1. **Ana (produtora)** → *Fretes*: há uma colheita de 700 kg de tomate sem frete. Toque em **Pedir frete p/ amanhã**: ela entra no caminhão coletivo que já está se formando com 4 vizinhos e o app mostra a parte dela e a economia.
+2. Ainda como Ana, em *Fretes* há uma carga entregue ontem com **Pix pendente**. Marque **Simular aviso duplicado do banco** e confirme: o pagamento é confirmado uma única vez.
+3. **João (motorista)** → aceite a carga, veja a rota no mapa, faça o check-in de cada parada com o código do QR e confirme a entrega. Os produtores recebem a cobrança Pix.
+4. **Cooperativa** → *Painel*: volumes, economia e a tabela de webhooks (o duplicado aparece processado uma vez). Em *Estradas*, marque um bloqueio no mapa sobre a rota: motorista e produtores são avisados.
+5. **Offline**: no Chrome, DevTools → Network → *Offline*. Registre uma colheita: ela fica "guardada no celular". Volte ao online e ela sobe sozinha, sem duplicar.
+6. **Bot**: na tela de login, *Testar o bot*. Envie `colhi 200 kg de alface`, depois `frete`, `status`, `economia`, `score`.
 
 ---
 
 ## System design
 
-### Visão geral da arquitetura
+### Visão geral (como implementado)
 
 ```mermaid
 flowchart LR
-    subgraph Campo["Sensores e entrada de dados"]
-        IOT["Sensores IoT<br/>LoRaWAN"]
-        MIC["Microfone e voz"]
-        GPS["GPS nativo offline"]
-        CAM["Câmera do smartphone"]
+    subgraph Campo["Entrada de dados"]
+        VOZ["Voz<br/>Web Speech API"]
+        GPS["GPS / propriedade"]
+        CAM["Câmera<br/>leitura de QR"]
+        IOT["Sensores IoT<br/>(gateway LoRaWAN)"]
     end
 
-    subgraph FE["Front-end"]
-        PWA["PWA Mobile Offline-First<br/>React + Service Workers"]
-        BOT["Bot conversacional<br/>WhatsApp / SMS / USSD"]
-        WEB["Portal web<br/>administrativo"]
+    subgraph FE["Front-end · React PWA"]
+        PWA["App produtor / motorista / cooperativa"]
+        SW["Service Worker<br/>cache offline"]
+        IDB[("IndexedDB<br/>fila de operações")]
     end
 
-    LOCAL[("SQLite / IndexedDB<br/>local")]
+    BOT["Bot WhatsApp / SMS / USSD"]
 
-    subgraph BE["Back-end"]
-        SYNC["Motor de sincronização<br/>assíncrona"]
-        CORE["API Core<br/>FastAPI / Spring Boot"]
-        RAT["Rateio financeiro e<br/>agrupamento de carga"]
+    subgraph API["API · Node.js + Fastify + TypeScript"]
+        AUTH["Auth por código (OTP) + JWT"]
+        SYNC["Sincronização idempotente"]
+        FRETE["Agrupamento K-Means<br/>rota + rateio"]
+        SM["Máquinas de estado<br/>pedido e carga"]
+        WH["Webhook Pix<br/>HMAC + idempotência"]
+        SCORE["AgroScore<br/>regressão logística"]
+        ALR["Alertas"]
+        JOBS["Jobs: expiração, clima,<br/>agrupamento"]
     end
 
-    DB[("PostgreSQL / Oracle<br/>em nuvem")]
+    DB[("SQLite<br/>WAL")]
 
-    subgraph AWS["Cloud AWS"]
-        EC2["EC2 / Lambda"]
-        S3["S3<br/>mídia e comprovantes"]
-    end
-
-    subgraph IA["Inteligência artificial e ML"]
-        SCORE["AgroScore de crédito"]
-        KM["Clusterização de<br/>frete coletivo"]
-        VIS["Triagem visual da safra<br/>(na borda)"]
-    end
-
-    subgraph EXT["APIs externas"]
-        MSG["Twilio / WhatsApp / Pix"]
+    subgraph ADP["Adapters (trocáveis)"]
+        PIX["Pix"]
+        MSG["SMS / WhatsApp / Push"]
+        CLI["Clima<br/>INMET / Open-Meteo"]
         COT["Cotações<br/>Cepea / CONAB"]
-        MAP["Rotas<br/>Google Maps / OSM"]
-        CLI["Clima e solo<br/>INMET / Embrapa"]
     end
 
-    subgraph ALR["Sistema de alertas"]
-        A1["Push e SMS: fechamento<br/>do caminhão coletivo"]
-        A2["Clima severo e<br/>bloqueio de estradas"]
-    end
-
-    MIC --> PWA
+    VOZ --> PWA
     GPS --> PWA
     CAM --> PWA
-    CAM --> VIS
-    IOT --> CORE
-    PWA <--> LOCAL
-    PWA --> SYNC
-    BOT --> CORE
-    WEB --> CORE
-    SYNC --> CORE
-    CORE --> RAT
-    CORE --> DB
-    CORE --> EC2
-    EC2 --> S3
-    CORE --> SCORE
-    RAT --> KM
-    CORE --> MSG
-    CORE --> COT
-    CORE --> MAP
-    CORE --> CLI
-    KM --> A1
-    CLI --> A2
-    MSG --> A1
-    A1 --> BOT
+    PWA <--> IDB
+    PWA <--> SW
+    IDB --> SYNC
+    PWA --> API
+    BOT --> API
+    IOT --> API
+    API --> DB
+    FRETE --> SM
+    WH --> SM
+    SM --> ALR
+    ALR --> MSG
+    FRETE --> PIX
+    PIX -- webhook assinado --> WH
+    JOBS --> CLI
+    API --> COT
 ```
 
-### Componentes por camada
+O desenho original (mapa 1) previa FastAPI/Spring, PostgreSQL/Oracle e AWS. O MVP usa uma pilha mais simples de rodar e hospedar (um processo Node + SQLite), mantendo as mesmas fronteiras: cada serviço externo fica atrás de um adapter, e o banco é acessado por SQL simples, portável para PostgreSQL.
 
-| Camada | Componente | Responsabilidade |
-|---|---|---|
-| **Entrada de dados** | Sensores IoT LoRaWAN | Telemetria de longo alcance e baixo consumo (umidade, temperatura) em áreas sem 4G. |
-| | Microfone e voz | Registro da colheita falado, para produtores com baixa escolaridade. |
-| | GPS nativo offline | Localização da propriedade e do ponto de coleta, sem depender de rede. |
-| | Câmera | Fotos da safra para triagem visual e comprovantes. |
-| **Front-end** | PWA Offline-First (React + Service Workers) | App principal do produtor; funciona sem internet e guarda tudo localmente. |
-| | Bot conversacional (WhatsApp / SMS / USSD) | Canal para qualquer celular, inclusive sem smartphone. |
-| | Portal web administrativo | Uso por cooperativas, motoristas e prefeituras. |
-| **Back-end** | API Core (FastAPI / Spring Boot) | Regras de negócio, autenticação e orquestração das integrações. |
-| | Motor de sincronização assíncrona | Recebe filas de operações feitas offline e reconcilia com o servidor. |
-| | Rateio financeiro e agrupamento de carga | Divide o custo do frete proporcionalmente e monta as cargas coletivas. |
-| **Dados** | PostgreSQL / Oracle em nuvem | Fonte da verdade (produtores, safras, ordens, pagamentos). |
-| | SQLite / IndexedDB local | Cópia local e fila de sincronização no dispositivo. |
-| **Nuvem (AWS)** | EC2 / Lambda | Execução da API e de tarefas por evento. |
-| | S3 | Armazenamento de fotos, áudios e comprovantes. |
-| **IA / ML** | AgroScore, K-Means, visão computacional | Ver [Inteligência artificial](#inteligência-artificial). |
-| **Integrações** | Twilio / WhatsApp / Pix, Cepea / CONAB, Google Maps / OSM, INMET / Embrapa | Mensageria, pagamentos, cotações, rotas e clima. |
-| **Alertas** | Push e SMS | Avisos de carga, clima e estradas. |
-
-### Sincronização offline-first
-
-O produtor nunca espera a rede. Toda ação é gravada primeiro no dispositivo e enviada depois.
+### Offline-first
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor P as Produtor
-    participant PWA as PWA (Service Worker)
-    participant L as SQLite / IndexedDB
-    participant S as Motor de sincronização
-    participant API as API Core
-    participant DB as PostgreSQL
+    participant App as PWA
+    participant F as IndexedDB (fila)
+    participant API as API /sync
+    participant DB as SQLite
 
-    P->>PWA: "colhi 300 kg de tomate" (voz) + GPS
-    PWA->>L: grava registro com UUID local e status PENDENTE
-    PWA-->>P: confirmação imediata (sem rede)
-    Note over PWA,L: Sem conexão: operações ficam na fila local
-    PWA->>PWA: detecta conexão (evento online / background sync)
-    PWA->>S: envia lote de operações pendentes
-    S->>API: aplica cada operação (idempotente pelo UUID)
-    API->>DB: upsert
-    API-->>S: IDs do servidor + conflitos resolvidos
-    S-->>PWA: confirmações
-    PWA->>L: marca como SINCRONIZADO
+    P->>App: registra colheita (voz ou ícones)
+    App->>F: grava operação com opId e UUID da colheita
+    App-->>P: "guardado no celular" (sem rede)
+    Note over App,F: sem sinal: operações ficam na fila
+    App->>App: evento online / a cada 20 s
+    App->>API: POST /sync {operacoes}
+    API->>DB: aplica cada operação; grava opId
+    API-->>App: resultados (ok / erro definitivo)
+    App->>F: remove as operações processadas
+    Note over API,DB: reenviar o mesmo lote devolve os mesmos resultados, sem duplicar
 ```
 
-- Cada registro nasce com um **UUID gerado no dispositivo**. Reenviar o mesmo lote não duplica dados.
-- Conflitos são resolvidos no servidor. O dado mais recente vence para campos simples, e operações financeiras nunca são sobrescritas: são reconciliadas.
-- Mídias (fotos e áudios) sobem separadas, direto para o S3, quando houver conexão melhor.
-
-### Frete coletivo: do registro ao pagamento
+### Frete coletivo
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor P as Produtores
-    participant API as API Core
-    participant KM as Clusterização (K-Means)
-    participant MAP as Rotas (Maps / OSM)
-    participant ALR as Alertas
-    actor M as Motorista / Cooperativa
-    participant PIX as Pix
+    participant API as API
+    participant K as Agrupamento
+    actor M as Motorista
+    participant PIX as Pix (adapter)
 
-    P->>API: pedidos de frete (volume, local, data)
-    API->>KM: pedidos abertos na janela de 48 h
-    KM->>MAP: distâncias e rotas
-    KM-->>API: grupos por raio + capacidade do caminhão
-    API->>ALR: carga coletiva fechada
-    ALR-->>P: Push / SMS com horário de coleta
-    ALR-->>M: rota e ordem de coleta
-    M->>API: check-in por QR Code em cada propriedade
+    P->>API: pedidos de frete (volume, destino, data)
+    API->>K: pedidos "solicitado"
+    K->>K: 1) cabe numa carga aberta? 2) K-Means por destino + janela 48 h<br/>com capacidade, raio e custo menor que o individual
+    K-->>API: cargas + rota (vizinho mais próximo + 2-opt) + rateio
+    API-->>P: alerta: "entrou na carga, sua parte R$ X, economia R$ Y"
+    API-->>M: alerta: "nova carga disponível"
+    M->>API: aceitar (só um motorista consegue)
+    M->>API: check-in por QR em cada propriedade
     M->>API: entrega no destino
-    API->>API: rateio proporcional do frete
-    API->>PIX: pagamentos e divisão do frete
-    PIX-->>P: valor líquido recebido
+    API->>PIX: cobrança Pix por produtor
+    PIX-->>API: webhook assinado (pix.recebido)
+    API->>API: pedido → pago; todos pagos → carga liquidada
 ```
 
-### Ciclo de vida da ordem de coleta
+**Custo do frete** (parâmetros em `apps/api/src/domain/frete.ts`): taxa fixa + taxa por parada + R$/km. A distância de estrada é a distância em linha reta × 1,3.
+**Rateio:** proporcional a *volume × distância até o destino*, em centavos inteiros pelo método do maior resto. Tem um teto: ninguém paga mais do que pagaria sozinho, e o excedente é redistribuído entre os demais.
+
+### Máquinas de estado
 
 ```mermaid
 stateDiagram-v2
-    [*] --> SOLICITADA: produtor pede frete
-    SOLICITADA --> AGRUPADA: entra em carga coletiva
-    SOLICITADA --> EXPIRADA: janela de 48 h sem grupo
-    AGRUPADA --> AGENDADA: carga fechada e motorista definido
-    AGENDADA --> COLETADA: check-in por QR Code
-    COLETADA --> ENTREGUE: chegada ao destino
-    ENTREGUE --> PAGA: rateio liquidado via Pix
-    SOLICITADA --> CANCELADA
-    AGRUPADA --> CANCELADA
-    AGENDADA --> CANCELADA
-    PAGA --> [*]
-    EXPIRADA --> [*]
-    CANCELADA --> [*]
+    direction LR
+    [*] --> solicitado
+    solicitado --> agrupado: entra em carga
+    solicitado --> expirado: 48 h sem grupo
+    expirado --> solicitado: nova data
+    expirado --> agrupado: frete individual
+    agrupado --> agendado: motorista aceita
+    agrupado --> solicitado: carga desfeita
+    agendado --> coletado: check-in QR
+    agendado --> solicitado: não coletado
+    coletado --> entregue
+    entregue --> pago: webhook Pix
+    solicitado --> cancelado
+    agrupado --> cancelado
+    agendado --> cancelado
+    pago --> [*]
 ```
 
-Um pedido expirado pode ser reaberto ou atendido por frete individual.
+Carga: `aberta → agendada → em_rota → entregue → liquidada` (ou `cancelada` antes da rota).
+Toda transição passa por uma única função com *compare-and-set* (`UPDATE ... WHERE status = <anterior>`) e grava na tabela `auditoria`.
 
-### Inteligência artificial
+### Webhooks Pix idempotentes
 
-| Modelo | Técnica | Entrada | Saída | Para quê |
-|---|---|---|---|---|
-| **Clusterização de frete coletivo** | K-Means com restrição de raio e janela de 48 h | Localização, volume, data desejada, capacidade do caminhão | Grupos de coleta e sequência de rota | Reduzir o custo do frete em até 60% |
-| **AgroScore de crédito** | Regressão Logística / Random Forest (Scikit-learn) | Histórico de colheitas, entregas concluídas, regularidade de pagamentos, dados de clima e mercado | Score de risco e explicação dos fatores | Microcrédito justo sem histórico bancário formal |
-| **Triagem visual da safra** | Visão computacional rodando no dispositivo (borda) | Foto da produção | Classificação de qualidade / perecibilidade | Priorizar perecíveis e reduzir perdas, sem depender de rede |
+- Corpo assinado com **HMAC-SHA256** (`x-assinatura`), conferido em tempo constante.
+- `event_id` é chave primária em `webhook_eventos` e é gravado **na mesma transação** do efeito.
+- Resultados possíveis: `confirmado`, `duplicado`, `ja_confirmado`, `valor_divergente`, `txid_desconhecido`. Só `confirmado` muda estado.
 
-Cuidados: o AgroScore deve ser explicável ao produtor, revisado contra vieses regionais e nunca negar crédito sem possibilidade de revisão humana.
+### AgroScore
 
-### Sistema de alertas
-
-```mermaid
-flowchart LR
-    E1["Carga coletiva fechada"] --> F["Fila de mensagens<br/>assíncrona"]
-    E2["INMET: clima severo"] --> F
-    E3["Bloqueio de estrada"] --> F
-    F --> R{"Canal disponível?"}
-    R -- app instalado --> PUSH["Push"]
-    R -- sem internet --> SMS["SMS"]
-    R -- WhatsApp --> WA["WhatsApp"]
-```
-
-As mensagens são curtas, de baixo consumo de dados, e caem para SMS quando não há internet.
+Regressão logística treinada por gradiente descendente (implementação própria, determinística) sobre 5 sinais da operação no AgroSync: entregas concluídas, pagamentos de frete em até 72 h, volume médio, meses ativos e cancelamentos. Escala de 300 a 900, faixas A a D e limite indicativo de microcrédito. A explicação mostra o peso de cada fator. A base de treino é sintética com semente fixa; em produção, ela é trocada pelo histórico real de microcréditos.
 
 ### Modelo de dados
 
 ```mermaid
 erDiagram
-    PRODUTOR ||--o{ PROPRIEDADE : possui
-    PRODUTOR }o--o| COOPERATIVA : participa
-    PROPRIEDADE ||--o{ REGISTRO_SAFRA : registra
-    PROPRIEDADE ||--o{ LEITURA_SENSOR : recebe
-    REGISTRO_SAFRA ||--o{ PEDIDO_FRETE : origina
-    CARGA_COLETIVA ||--o{ PEDIDO_FRETE : agrupa
-    MOTORISTA ||--o{ CARGA_COLETIVA : transporta
-    CARGA_COLETIVA ||--o{ RATEIO : divide
-    PEDIDO_FRETE ||--|| RATEIO : paga
-    RATEIO ||--o| PAGAMENTO_PIX : liquida
-    PRODUTOR ||--o{ AGROSCORE : avaliado
-    PRODUTOR ||--o{ ALERTA : recebe
-
-    PRODUTOR {
-        uuid id
-        string nome
-        string telefone
-        string canal_preferido
-    }
-    REGISTRO_SAFRA {
-        uuid id "gerado no dispositivo"
-        string cultura
-        int quantidade_kg
-        point localizacao
-        string status_sync
-    }
-    PEDIDO_FRETE {
-        uuid id
-        int volume_kg
-        date data_desejada
-        string status
-    }
-    CARGA_COLETIVA {
-        uuid id
-        int capacidade_kg
-        date data_coleta
-        string rota
-    }
-    RATEIO {
-        int valor_centavos
-        float proporcao
-    }
-    AGROSCORE {
-        int score
-        string modelo_versao
-        json fatores
-    }
+    USUARIOS ||--o{ PROPRIEDADES : possui
+    PROPRIEDADES ||--o{ SAFRAS : registra
+    PROPRIEDADES ||--o{ LEITURAS_SENSOR : recebe
+    SAFRAS ||--o| PEDIDOS : origina
+    DESTINOS ||--o{ PEDIDOS : recebe
+    CARGAS ||--o{ PEDIDOS : agrupa
+    CARGAS ||--o{ RATEIOS : divide
+    PEDIDOS ||--o{ RATEIOS : "paga (1 ativo)"
+    RATEIOS ||--o| PAGAMENTOS : liquida
+    USUARIOS ||--o{ ALERTAS : recebe
+    WEBHOOK_EVENTOS }o--|| PAGAMENTOS : confirma
+    OPERACOES_SYNC }o--|| USUARIOS : envia
+    AUDITORIA }o--|| PEDIDOS : registra
 ```
 
-### Segurança, privacidade e acessibilidade
+Garantias no próprio banco: `UNIQUE` em `pedidos(safra_id)` para pedidos ativos, em `rateios(pedido_id)` para rateios ativos, em `pagamentos(rateio_id)` e `txid`, em `alertas(chave)` (o mesmo aviso nunca é enviado duas vezes) e PK em `webhook_eventos(event_id)` e `operacoes_sync(op_id)`.
 
-| Tema | Medida |
+### Segurança e privacidade
+
+| Tema | Como está |
 |---|---|
-| **LGPD** | Coleta mínima, consentimento explícito, finalidade clara e direito de exclusão. |
-| **Criptografia** | TLS em trânsito; dados sensíveis cifrados em repouso no servidor e no dispositivo. |
-| **Autenticação** | Login simplificado (código por SMS / WhatsApp), sem senha complexa. |
-| **Acessibilidade** | Interface voice-first, ícones grandes e alto contraste para uso sob sol. |
-| **Inclusão** | Canais USSD e SMS para quem não tem smartphone ou plano de dados. |
+| Autenticação | Login sem senha: código de 6 dígitos (hash SHA-256, 10 min, máx. 5 tentativas) + JWT de 30 dias. |
+| Autorização | Cada rota exige papel (produtor, motorista, cooperativa) e confere a posse do recurso. |
+| Webhooks | Assinatura HMAC verificada antes de qualquer efeito. |
+| Sensores | Cada propriedade tem uma chave de dispositivo própria. |
+| LGPD | Coleta mínima (nome, telefone, localização da propriedade); dados de demonstração fictícios; o cache offline é apagado ao sair. |
+| Acessibilidade | Voz, ícones grandes, alvos de toque ≥ 48 px, alto contraste, modo escuro, canais SMS/USSD. |
 
-### Decisões técnicas
+---
 
-| Tema | Decisão |
-|---|---|
-| **Offline-first** | O dispositivo é a primeira fonte de escrita; o servidor reconcilia. |
-| **Idempotência** | UUID gerado no dispositivo em todo registro e operação sincronizada. |
-| **Dinheiro** | Valores em centavos inteiros no rateio e nos pagamentos. |
-| **Geoespacial** | Consultas espaciais em SQL para raio de coleta e volumes por região. |
-| **ETL** | Pipeline em Python (Pandas / NumPy) para limpar e cruzar dados de campo, clima, rotas e mercado. |
-| **Integrações** | API Gateway RESTful para INMET, mapas, ERPs de cooperativas e Pix. |
-| **Mídia** | Upload direto para S3, desacoplado da sincronização dos dados. |
-| **Analytics** | Dashboard em Power BI para cooperativas e prefeituras (volumes, renda, ODS 2/12, PNAE). |
+## Confiabilidade: cenários testados
+
+`npm test` roda **60 testes automatizados** (Vitest). Todos passam.
+
+| Área | Cenário | Resultado esperado |
+|---|---|---|
+| Dinheiro | Rateio de centavos com qualquer conjunto de pesos | Soma exatamente o total, sem centavo perdido ou criado |
+| Dinheiro | Teto do rateio | Ninguém paga mais do que no frete individual |
+| Frete | Carga coletiva × fretes individuais | Coletivo sempre mais barato, senão o grupo não é formado |
+| Agrupamento | Mesmo conjunto de pedidos | Mesmos grupos (K-Means determinístico) |
+| Agrupamento | Capacidade, raio, destino e janela de 48 h | Nenhum grupo viola as restrições |
+| Agrupamento | Pedido novo com carga aberta compatível | Entra na carga e o rateio é refeito |
+| Agrupamento | Carga já aceita por motorista | Não é alterada |
+| Estados | Pular etapas ou voltar de estado terminal | Recusado |
+| Concorrência | Dois motoristas aceitam a mesma carga | Um consegue (200), o outro recebe 409 |
+| Offline | Mesmo lote de sincronização enviado duas vezes | Nada duplicado; resultado marcado como repetido |
+| Offline | Operação inválida no meio do lote | As demais são aplicadas |
+| Offline | Dois pedidos para a mesma colheita | Devolve o pedido existente |
+| Pix | Webhook duplicado | Confirma uma única vez |
+| Pix | Outro evento para pagamento já confirmado | Ignorado (`ja_confirmado`) |
+| Pix | Valor diferente do cobrado | Não confirma |
+| Pix | Assinatura inválida | 401 |
+| Pix | Todos os produtores pagam | Carga liquidada e motorista avisado |
+| Coleta | QR de outra carga | Recusado |
+| Coleta | Produtor ausente | Volta para a fila e não é cobrado |
+| Cancelamento | Produtor sai de carga com 3 | Carga replanejada para os outros 2, com rateio refeito |
+| Auth | Código errado 5 vezes | Bloqueia (429) |
+| Auth | Rota de outro papel | 403 |
+| Linguagem | "trezentos e cinquenta quilos de alface", "10 caixas de morango", "2 toneladas de milho"... | Interpretado corretamente; frase sem quantidade não é inventada |
+| AgroScore | Mais pontualidade / mais cancelamentos | Score sobe / desce (monotonicidade) |
+| Sensores | Solo seco duas vezes no mesmo dia | Um único alerta |
+| Datas | Virada de mês, de ano e 29/02 | Corretas |
+| Seed | Histórico completo de demonstração | Todo rateio soma o custo da sua carga |
+
+---
+
+## Estrutura do código
+
+```
+agrosync/
+├── apps/
+│   ├── api/                  Node.js + Fastify + TypeScript
+│   │   ├── src/domain/       regras puras: geo, frete, agrupamento, rateio, estados, AgroScore, linguagem
+│   │   ├── src/services/     casos de uso: fretes, pagamentos, sync, alertas, bot, jobs, painel
+│   │   ├── src/adapters/     Pix, notificação, clima, cotações (simulados + Open-Meteo real)
+│   │   ├── src/routes.ts     rotas HTTP /api/*
+│   │   ├── src/seed.ts       dados de demonstração gerados pelos próprios serviços
+│   │   └── test/             testes de domínio e de fluxo (HTTP em memória)
+│   └── web/                  React + Vite + PWA (Workbox) + Leaflet
+│       └── src/              offline.ts (fila IndexedDB), páginas por papel, componentes
+└── docs/                     site de apresentação (GitHub Pages)
+```
+
+## Simulado x real
+
+| Integração | No MVP | Para produção |
+|---|---|---|
+| Pix | Sandbox próprio, fiel ao contrato de um PSP: cobrança, webhook assinado e opção de duplicar | Implementar `ProvedorPix` com um PSP (ex.: Asaas, iugu, Efí) |
+| SMS / WhatsApp / Push | Caixa de saída simulada (`/api/dev/caixa-saida`) | Implementar `Notificador` com Twilio / WhatsApp Business / Web Push |
+| Clima | Simulador determinístico; **Open-Meteo real** com `CLIMA_PROVIDER=open-meteo` | INMET |
+| Cotações | Simuladas sobre preços de referência | Cepea / CONAB |
+| Sensores | Simulador de gateway (`npm run sim:sensores`) | Gateway LoRaWAN real chamando `POST /api/sensores/leituras` |
+| Voz | Web Speech API do navegador (precisa de internet) | — |
+| Triagem visual da safra | Não implementada no MVP | Modelo de visão computacional no dispositivo |
+| Power BI | Substituído pelo painel da cooperativa no próprio app | — |
+
+**Ambiente de demonstração: nenhum dinheiro real é movimentado.**
 
 ---
 
 ## As 8 áreas da solução
 
-| # | Área | Função | O que será desenvolvido | Objetivo |
-|---|---|---|---|---|
-| 1 | Coleta de dados e identificação de necessidades | Captar dados de safra e demanda de frete no campo, mesmo sem internet | Caderno de campo PWA offline-first por voz/ícones, bot SMS/WhatsApp e GPS | Registrar a colheita em menos de 1 minuto sem depender de 4G |
-| 2 | Processamento e análise de dados | Higienizar, validar e cruzar dados do campo com clima, rotas e mercado | Pipeline ETL em Python (Pandas/NumPy) e consultas geoespaciais em SQL | Transformar registros isolados em inteligência logística e volumes por região |
-| 3 | Inteligência artificial e ML | Otimizar o compartilhamento de caminhões e calcular risco de crédito alternativo | K-Means para pool de frete e modelo preditivo AgroScore (Scikit-learn) | Reduzir o frete em até 60% e viabilizar microcrédito sem burocracia |
-| 4 | Geração de alertas e notificações | Sincronizar produtores, motoristas e cooperativas sobre janelas de coleta e clima | Motor de mensageria assíncrona com SMS e WhatsApp de baixo consumo | Garantir o embarque no momento certo e zerar perdas de perecíveis |
-| 5 | Dashboards e visualização | Transparência financeira ao produtor e visão analítica a cooperativas e prefeituras | Tela de ganhos/economia no app e dashboard em Power BI (volumes, renda, ODS 2/12) | Fortalecer o produtor frente a atravessadores e embasar políticas públicas (PNAE) |
-| 6 | Gerenciamento e atendimento das demandas | Orquestrar o ciclo do pedido de frete até a entrega e o pagamento | Ordens de coleta, check-in via QR Code, rateio automático via Pix e suporte | Rastreabilidade ponta a ponta e divisão justa do frete |
-| 7 | Integração entre sistemas e serviços | Conectar a ecossistemas governamentais, meteorológicos, logísticos e bancários | API Gateway RESTful integrando INMET, mapas rurais, ERPs de cooperativas e Pix | Operar como hub automatizado sem preenchimento técnico do agricultor |
-| 8 | Acessibilidade, privacidade e segurança | Inclusão digital no campo e proteção de dados | Interface voice-first com alto contraste, login simplificado e criptografia (LGPD) | Uso autônomo por produtores com baixa escolaridade ou visão reduzida |
+| # | Área | Onde está no código |
+|---|---|---|
+| 1 | Coleta de dados e identificação de necessidades | `web/pages/produtor/Colheita.tsx`, `web/offline.ts`, `api/services/bot.ts`, `api/simulador-sensores.ts` |
+| 2 | Processamento e análise de dados | `api/services/painel.ts`, `api/domain/geo.ts` |
+| 3 | Inteligência artificial e ML | `api/domain/agrupamento.ts` (K-Means), `api/domain/agroscore.ts` (regressão logística), `api/domain/linguagem.ts` |
+| 4 | Geração de alertas e notificações | `api/services/alertas.ts`, `api/services/jobs.ts`, `api/services/bloqueios.ts` |
+| 5 | Dashboards e visualização | `web/pages/produtor/Inicio.tsx`, `web/pages/cooperativa/Painel.tsx` |
+| 6 | Gerenciamento e atendimento das demandas | `api/services/fretes.ts`, `api/services/pagamentos.ts`, `web/pages/motorista/*` |
+| 7 | Integração entre sistemas e serviços | `api/adapters/*`, `api/routes.ts` |
+| 8 | Acessibilidade, privacidade e segurança | `api/services/auth.ts`, `web/estilo.css`, fluxo por voz e bot USSD/SMS |
 
-## Mapas mentais
+### Mapas mentais
 
-**Mapa 1 · Arquitetura geral**
+<details>
+<summary>Mapa 1 · Arquitetura geral</summary>
 
-![Mapa mental da arquitetura](assets/mapa-arquitetura.jpg)
+![Mapa mental da arquitetura](docs/assets/mapa-arquitetura.jpg)
+</details>
 
-**Mapa 2 · Divisão das áreas**
+<details>
+<summary>Mapa 2 · Divisão das áreas</summary>
 
-![Mapa mental das áreas](assets/mapa-areas.jpg)
-
-## Site do projeto
-
-A página do projeto é estática (`index.html` + `assets/`), sem etapa de build, publicada em **https://codebynaty.github.io/agrosync/**. Para ver localmente, abra o `index.html` no navegador.
+![Mapa mental das áreas](docs/assets/mapa-areas.jpg)
+</details>
 
 ## Equipe
 
