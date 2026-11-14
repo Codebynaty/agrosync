@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgroSync – CitizenTech Rural</title>
+<meta name="description" content="AgroSync: plataforma offline-first que conecta pequenos produtores rurais a frete coletivo, crédito justo e alertas de clima. Projeto Global Solution 2026.2 – FIAP.">
+<link rel="icon" href="assets/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f9f4; --surface:#ffffff; --surface-2:#eef3e8; --text:#17231a; --muted:#56655a;
+  --line:#dbe4d4; --brand:#2f7d32; --brand-strong:#1f5c23; --accent:#c8a227; --on-brand:#ffffff;
+  --c1:#9ccc65; --c2:#4fc3f7; --c3:#9575cd; --c4:#ffb74d; --c5:#fff176; --c6:#4dd0c4; --c7:#bdbdbd; --c8:#f48fb1;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(23,35,26,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1511; --surface:#161e18; --surface-2:#1c2720; --text:#e6efe6; --muted:#a3b3a6;
+    --line:#2a372d; --brand:#6cc070; --brand-strong:#8fd893; --accent:#e2c25a; --on-brand:#0f1511;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1511; --surface:#161e18; --surface-2:#1c2720; --text:#e6efe6; --muted:#a3b3a6;
+  --line:#2a372d; --brand:#6cc070; --brand-strong:#8fd893; --accent:#e2c25a; --on-brand:#0f1511;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+img{max-width:100%;display:block}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:16px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;text-decoration:none;color:var(--text)}
+.brand img{width:32px;height:32px;border-radius:8px;object-fit:cover}
+nav{margin-left:auto;display:flex;gap:20px}
+nav a{color:var(--muted);text-decoration:none;font-size:.92rem;font-weight:500}
+nav a:hover{color:var(--text)}
+@media (max-width:760px){nav{display:none}}
+
+.hero{padding:72px 0 56px}
+.hero .wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:48px;align-items:center}
+.eyebrow{display:inline-block;font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);background:var(--surface-2);padding:6px 12px;border-radius:999px}
+h1{font-size:clamp(2.2rem,5vw,3.6rem);line-height:1.08;margin:18px 0 16px;letter-spacing:-.02em}
+h1 span{color:var(--brand)}
+.lead{font-size:1.15rem;color:var(--muted);max-width:56ch}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:10px;font-weight:600;text-decoration:none;border:1px solid var(--line);color:var(--text);background:var(--surface)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.hero-img{border-radius:24px;overflow:hidden;box-shadow:var(--shadow);aspect-ratio:1/1;max-width:400px;justify-self:center}
+.hero-img img{width:100%;height:100%;object-fit:cover}
+@media (max-width:860px){.hero .wrap{grid-template-columns:1fr}.hero-img{max-width:280px;order:-1}}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}
+.stat b{display:block;font-size:1.8rem;color:var(--brand-strong);letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:.92rem}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+section{padding:64px 0}
+section.alt{background:var(--surface-2)}
+h2{font-size:clamp(1.6rem,3vw,2.2rem);margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 32px;max-width:70ch}
+
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 8px;font-size:1.1rem}
+.card p{margin:0;color:var(--muted)}
+.card ul{margin:8px 0 0;padding-left:18px;color:var(--muted)}
+
+.layers{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.layer{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;border-top:4px solid var(--k,var(--brand))}
+.layer h3{margin:0 0 10px;font-size:1rem}
+.layer ul{margin:0;padding-left:18px;color:var(--muted);font-size:.94rem}
+.layer li{margin:3px 0}
+.tag{font-size:.78rem;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
+
+.areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;counter-reset:a}
+.area{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;position:relative;overflow:hidden}
+.area::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--k)}
+.area .n{font-size:.8rem;font-weight:700;color:var(--muted)}
+.area h3{margin:2px 0 12px;font-size:1.02rem}
+.area dl{margin:0;font-size:.92rem}
+.area dt{font-weight:600;margin-top:8px}
+.area dd{margin:2px 0 0;color:var(--muted)}
+
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 32px;padding:0;list-style:none}
+.flow li{background:var(--surface);border:1px solid var(--line);padding:8px 14px;border-radius:999px;font-size:.9rem;font-weight:500}
+.flow li.arrow{background:none;border:none;padding:0;color:var(--muted)}
+
+figure{margin:0}
+.map{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow)}
+.map a{display:block}
+figcaption{color:var(--muted);font-size:.9rem;margin-top:10px}
+.maps{display:grid;gap:32px}
+
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:.9rem;font-family:ui-monospace,Consolas,monospace}
+
+.team{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.member{display:flex;align-items:center;gap:14px}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-weight:700}
+
+footer{border-top:1px solid var(--line);padding:32px 0;color:var(--muted);font-size:.9rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="assets/logo.jpg" alt="">AgroSync</a>
+    <nav>
+      <a href="#problema">Problema</a>
+      <a href="#arquitetura">Arquitetura</a>
+      <a href="#areas">Áreas</a>
+      <a href="#mapas">Mapas mentais</a>
+      <a href="#equipe">Equipe</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">CitizenTech Rural · Global Solution 2026.2</span>
+        <h1>Frete coletivo, crédito justo e alertas para quem <span>planta</span>.</h1>
+        <p class="lead">O AgroSync ajuda pequenos produtores rurais a registrar a colheita mesmo sem internet, dividir o caminhão com vizinhos, receber via Pix e ter acesso a microcrédito, sem atravessadores e sem burocracia.</p>
+        <div class="cta">
+          <a class="btn primary" href="#arquitetura">Ver a arquitetura</a>
+          <a class="btn" href="https://miro.com/app/board/uXjVEPeAG6Y=/?share_link_id=391462605376" target="_blank" rel="noopener">Abrir no Miro ↗</a>
+        </div>
+      </div>
+      <div class="hero-img"><img src="assets/logo.jpg" alt="Logo do AgroSync sobre uma plantação ao pôr do sol"></div>
+    </div>
+  </section>
+
+  <div class="wrap" style="padding-bottom:56px">
+    <div class="stats">
+      <div class="stat"><b>até 60%</b><span>menos custo de frete com cargas agrupadas</span></div>
+      <div class="stat"><b>&lt; 1 min</b><span>para registrar a colheita, sem precisar de 4G</span></div>
+      <div class="stat"><b>48 h</b><span>janela para formar o caminhão coletivo</span></div>
+      <div class="stat"><b>ODS 2 e 12</b><span>Fome Zero · Consumo e Produção Responsáveis</span></div>
+    </div>
+  </div>
+
+  <section id="problema" class="alt">
+    <div class="wrap">
+      <h2>O problema e a proposta</h2>
+      <p class="sub">No campo, a conectividade é instável, o frete individual sai caro e o crédito bancário não chega a quem não tem histórico formal. O resultado é perda de perecíveis na porteira e dependência de atravessadores.</p>
+      <div class="cols">
+        <div class="card">
+          <h3>O que o produtor enfrenta</h3>
+          <ul>
+            <li>Sem sinal de 4G na propriedade</li>
+            <li>Frete caro para volumes pequenos</li>
+            <li>Colheita perecível perdida por atraso no embarque</li>
+            <li>Sem acesso a crédito rural sem burocracia</li>
+            <li>Pouca visibilidade de preço e de mercado</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Como o AgroSync responde</h3>
+          <ul>
+            <li>PWA <em>offline-first</em> com voz, ícones e GPS nativo</li>
+            <li>Bot por WhatsApp, SMS e USSD para qualquer celular</li>
+            <li>IA que agrupa cargas próximas em fretes coletivos</li>
+            <li>AgroScore: risco de crédito alternativo para microcrédito</li>
+            <li>Rateio automático do frete e pagamento via Pix</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="arquitetura">
+    <div class="wrap">
+      <h2>Arquitetura geral</h2>
+      <p class="sub">Os dados entram pelo celular e por sensores no campo, são sincronizados quando há conexão e processados por uma API central que conversa com serviços de clima, mercado, rotas e pagamentos.</p>
+      <ul class="flow" aria-label="Fluxo principal">
+        <li>Sensores e celular</li><li class="arrow">→</li>
+        <li>PWA / Bot</li><li class="arrow">→</li>
+        <li>Sincronização assíncrona</li><li class="arrow">→</li>
+        <li>API Core</li><li class="arrow">→</li>
+        <li>IA, banco, nuvem e APIs</li><li class="arrow">→</li>
+        <li>Alertas</li>
+      </ul>
+      <div class="layers">
+        <div class="layer" style="--k:var(--c2)">
+          <h3>Sensores e entrada de dados</h3>
+          <ul><li>Sensores IoT LoRaWAN</li><li>Microfone e voz</li><li>GPS nativo offline</li><li>Câmera do smartphone</li></ul>
+        </div>
+        <div class="layer" style="--k:var(--c2)">
+          <h3>Front-end</h3>
+          <ul><li>PWA Mobile Offline-First <span class="tag">React · Service Workers</span></li><li>Bot conversacional <span class="tag">WhatsApp · SMS · USSD</span></li><li>Portal web administrativo</li></ul>
+        </div>
+        <div class="layer" style="--k:var(--c5)">
+          <h3>Back-end</h3>
+          <ul><li>API Core <span class="tag">FastAPI / Spring Boot</span></li><li>Motor de sincronização assíncrona</li><li>Rateio financeiro e agrupamento de carga</li></ul>
+        </div>
+        <div class="layer" style="--k:var(--c1)">
+          <h3>Banco de dados</h3>
+          <ul><li>PostgreSQL / Oracle em nuvem</li><li>SQLite / IndexedDB local (offline)</li></ul>
+        </div>
+        <div class="layer" style="--k:var(--c3)">
+          <h3>Inteligência artificial e ML</h3>
+          <ul><li>AgroScore de crédito <span class="tag">Regressão Logística · Random Forest</span></li><li>Clusterização de frete coletivo <span class="tag">K-Means · raio + janela de 48 h</span></li><li>Triagem visual da safra <span class="tag">visão computacional na borda</span></li></ul>
+        </div>
+        <div class="layer" style="--k:var(--c4)">
+          <h3>Nuvem (AWS)</h3>
+          <ul><li>EC2 / Lambda</li><li>S3 para mídia e comprovantes</li></ul>
+        </div>
+        <div class="layer" style="--k:var(--c7)">
+          <h3>APIs externas</h3>
+          <ul><li>Mensageria e pagamentos <span class="tag">Twilio · WhatsApp · Pix</span></li><li>Cotações <span class="tag">Cepea · CONAB</span></li><li>Rotas e geolocalização <span class="tag">Google Maps · OSM</span></li><li>Clima e solo <span class="tag">INMET · Embrapa</span></li></ul>
+        </div>
+        <div class="layer" style="--k:var(--c5)">
+          <h3>Sistema de alertas</h3>
+          <ul><li>Push e SMS: fechamento do caminhão coletivo</li><li>Alertas de clima severo e bloqueio de estradas</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="areas" class="alt">
+    <div class="wrap">
+      <h2>As 8 áreas da solução</h2>
+      <p class="sub">Cada setor da plataforma, com a função, o que será desenvolvido e o objetivo.</p>
+      <div class="areas">
+        <article class="area" style="--k:var(--c1)"><div class="n">01</div><h3>Coleta de dados e identificação de necessidades</h3><dl>
+          <dt>Função</dt><dd>Captar dados de safra e demanda de frete no campo, mesmo sem internet.</dd>
+          <dt>Desenvolvimento</dt><dd>Caderno de campo PWA offline-first por voz e ícones, bot SMS/WhatsApp e GPS.</dd>
+          <dt>Objetivo</dt><dd>Registrar a colheita em menos de 1 minuto sem depender de 4G.</dd></dl></article>
+        <article class="area" style="--k:var(--c2)"><div class="n">02</div><h3>Processamento e análise de dados</h3><dl>
+          <dt>Função</dt><dd>Higienizar, validar e cruzar dados do campo com clima, rotas e mercado.</dd>
+          <dt>Desenvolvimento</dt><dd>Pipeline ETL em Python (Pandas/NumPy) e consultas geoespaciais em SQL.</dd>
+          <dt>Objetivo</dt><dd>Transformar registros isolados em inteligência logística e volumes consolidados por região.</dd></dl></article>
+        <article class="area" style="--k:var(--c3)"><div class="n">03</div><h3>Inteligência artificial e machine learning</h3><dl>
+          <dt>Função</dt><dd>Otimizar o compartilhamento de caminhões e calcular o risco de crédito rural alternativo.</dd>
+          <dt>Desenvolvimento</dt><dd>K-Means para o pool de frete e modelo preditivo AgroScore (Scikit-learn).</dd>
+          <dt>Objetivo</dt><dd>Reduzir o custo do frete em até 60% e viabilizar microcrédito justo sem burocracia bancária.</dd></dl></article>
+        <article class="area" style="--k:var(--c4)"><div class="n">04</div><h3>Geração de alertas e notificações</h3><dl>
+          <dt>Função</dt><dd>Sincronizar produtores, motoristas e cooperativas sobre janelas de coleta e clima.</dd>
+          <dt>Desenvolvimento</dt><dd>Motor de mensageria assíncrona integrado a SMS e WhatsApp de baixo consumo.</dd>
+          <dt>Objetivo</dt><dd>Garantir a colheita no momento exato do embarque e zerar perdas de perecíveis na porteira.</dd></dl></article>
+        <article class="area" style="--k:var(--c5)"><div class="n">05</div><h3>Dashboards e visualização para os cidadãos</h3><dl>
+          <dt>Função</dt><dd>Dar transparência financeira ao produtor e visão analítica a cooperativas e prefeituras.</dd>
+          <dt>Desenvolvimento</dt><dd>Tela de ganhos e economia no app e dashboard em Power BI (volumes, renda, ODS 2/12).</dd>
+          <dt>Objetivo</dt><dd>Fortalecer o produtor frente a atravessadores e embasar políticas públicas, como a merenda escolar (PNAE).</dd></dl></article>
+        <article class="area" style="--k:var(--c6)"><div class="n">06</div><h3>Gerenciamento e atendimento das demandas</h3><dl>
+          <dt>Função</dt><dd>Orquestrar o ciclo completo, do pedido de frete até a entrega e o pagamento no destino.</dd>
+          <dt>Desenvolvimento</dt><dd>Gestão de ordens de coleta, check-in via QR Code, rateio automático via Pix e suporte.</dd>
+          <dt>Objetivo</dt><dd>Garantir rastreabilidade ponta a ponta e divisão justa do frete entre vizinhos.</dd></dl></article>
+        <article class="area" style="--k:var(--c7)"><div class="n">07</div><h3>Integração entre sistemas e serviços</h3><dl>
+          <dt>Função</dt><dd>Conectar o AgroSync a ecossistemas governamentais, meteorológicos, logísticos e bancários.</dd>
+          <dt>Desenvolvimento</dt><dd>API Gateway RESTful integrando INMET, mapas rurais, ERPs de cooperativas e Pix.</dd>
+          <dt>Objetivo</dt><dd>Operar como hub automatizado, sem exigir preenchimento técnico manual do agricultor.</dd></dl></article>
+        <article class="area" style="--k:var(--c8)"><div class="n">08</div><h3>Acessibilidade, privacidade e segurança</h3><dl>
+          <dt>Função</dt><dd>Garantir inclusão digital no campo e proteção de dados pessoais e produtivos.</dd>
+          <dt>Desenvolvimento</dt><dd>Interface voice-first com alto contraste para uso sob sol, login simplificado e criptografia conforme a LGPD.</dd>
+          <dt>Objetivo</dt><dd>Permitir uso autônomo por produtores com baixa escolaridade ou visão reduzida, com total segurança.</dd></dl></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="mapas">
+    <div class="wrap">
+      <h2>Mapas mentais</h2>
+      <p class="sub">Os dois mapas entregues no desafio. Clique numa imagem para abrir em tamanho original, ou veja o quadro completo no <a href="https://miro.com/app/board/uXjVEPeAG6Y=/?share_link_id=391462605376" target="_blank" rel="noopener">Miro</a>.</p>
+      <div class="maps">
+        <figure>
+          <div class="map"><a href="assets/mapa-arquitetura.jpg" target="_blank"><img src="assets/mapa-arquitetura.jpg" alt="Mapa mental 1: arquitetura geral do AgroSync, ligando sensores, front-end, back-end, banco de dados, IA, nuvem AWS, APIs externas e sistema de alertas" loading="lazy"></a></div>
+          <figcaption>Mapa 1 · Arquitetura geral da solução</figcaption>
+        </figure>
+        <figure>
+          <div class="map"><a href="assets/mapa-areas.jpg" target="_blank"><img src="assets/mapa-areas.jpg" alt="Mapa mental 2: as oito áreas da solução, da coleta de dados até acessibilidade, privacidade e segurança" loading="lazy"></a></div>
+          <figcaption>Mapa 2 · Divisão das áreas da solução</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Tecnologias</h2>
+      <p class="sub">Stack prevista na arquitetura.</p>
+      <div class="pills">
+        <span class="pill">React PWA</span><span class="pill">Service Workers</span><span class="pill">FastAPI</span><span class="pill">Spring Boot</span>
+        <span class="pill">PostgreSQL</span><span class="pill">Oracle</span><span class="pill">SQLite</span><span class="pill">IndexedDB</span>
+        <span class="pill">Python · Pandas · NumPy</span><span class="pill">Scikit-learn</span><span class="pill">AWS EC2 · Lambda · S3</span>
+        <span class="pill">Twilio</span><span class="pill">WhatsApp API</span><span class="pill">Pix</span><span class="pill">LoRaWAN</span><span class="pill">Power BI</span>
+        <span class="pill">INMET</span><span class="pill">Embrapa</span><span class="pill">Cepea · CONAB</span><span class="pill">OpenStreetMap</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="equipe">
+    <div class="wrap">
+      <h2>Equipe</h2>
+      <p class="sub">Desafio CitizenTech · Software Engineering · Ciência da Computação · FIAP</p>
+      <div class="team">
+        <div class="card member"><div class="avatar">NA</div><div><b>Natalia Alcantara</b></div></div>
+        <div class="card member"><div class="avatar">RM</div><div><b>Raissa Marinho</b></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>AgroSync – CitizenTech Rural · Global Solution 2026.2</span>
+    <span>FIAP · Ciência da Computação</span>
+  </div>
+</footer>
+
+</body>
+</html>
