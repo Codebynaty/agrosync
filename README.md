@@ -65,3 +65,4 @@ A página do projeto é estática (`index.html` + `assets/`), sem etapa de build
 
 - Natalia Alcantara
 - Raissa Marinho
+- Vitoria Oliveiro
