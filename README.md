@@ -40,13 +40,14 @@ No campo, a conectividade é instável, o frete individual sai caro para volumes
 | Para quem | Funcionalidade |
 |---|---|
 | **Produtor** | Registra a colheita por **voz** ("colhi 300 quilos de tomate") ou por **ícones**, mesmo **offline**: o registro fica no celular e sobe sozinho quando o sinal volta. |
+| | Pode anexar uma **foto**: a **triagem visual** classifica o lote (Extra A, Boa B, Comercial C ou Refugo) pela cor, maturação e manchas — analisada **no próprio aparelho**, sem baixar modelo. |
 | | Pede frete; o sistema junta vizinhos com o mesmo destino em até 48 h num **caminhão coletivo** e mostra quanto ele economiza. |
 | | Mostra o **QR Code** para o motorista na coleta e paga sua parte do frete via **Pix**. |
 | | Vê seu **AgroScore** (crédito alternativo), com os fatores que ajudam ou pesam contra. |
 | | Recebe **alertas** de carga, coleta, pagamento, clima severo, estradas bloqueadas e solo seco (sensor). |
 | | Usa tudo também pelo **bot** de WhatsApp / SMS / USSD, sem smartphone. |
 | **Motorista** | Vê cargas disponíveis, aceita, segue a rota no mapa, faz **check-in por QR** (câmera ou código) e confirma a entrega. |
-| **Cooperativa** | Painel com volumes por produto, município e mês, economia gerada, cargas e pedidos; agrupa pedidos sob demanda; registra **bloqueios de estrada** no mapa; acompanha os webhooks Pix. |
+| **Cooperativa** | Painel com volumes por produto, município e mês, economia gerada, **distribuição de qualidade** das colheitas, cargas e pedidos; agrupa pedidos sob demanda; registra **bloqueios de estrada** no mapa; acompanha os webhooks Pix. |
 
 ---
 
@@ -114,12 +115,13 @@ Todos os nomes, telefones e propriedades são fictícios.
 
 ## Roteiro de demonstração
 
-1. **Ana (produtora)** → *Fretes*: há uma colheita de 700 kg de tomate sem frete. Toque em **Pedir frete p/ amanhã**: ela entra no caminhão coletivo que já está se formando com 4 vizinhos e o app mostra a parte dela e a economia.
-2. Ainda como Ana, em *Fretes* há uma carga entregue ontem com **Pix pendente**. Marque **Simular aviso duplicado do banco** e confirme: o pagamento é confirmado uma única vez.
-3. **João (motorista)** → aceite a carga, veja a rota no mapa, faça o check-in de cada parada com o código do QR e confirme a entrega. Os produtores recebem a cobrança Pix.
-4. **Cooperativa** → *Painel*: volumes, economia e a tabela de webhooks (o duplicado aparece processado uma vez). Em *Estradas*, marque um bloqueio no mapa sobre a rota: motorista e produtores são avisados.
-5. **Offline**: no Chrome, DevTools → Network → *Offline*. Registre uma colheita: ela fica "guardada no celular". Volte ao online e ela sobe sozinha, sem duplicar.
-6. **Bot**: na tela de login, *Testar o bot*. Envie `colhi 200 kg de alface`, depois `frete`, `status`, `economia`, `score`.
+1. **Ana (produtora)** → *Fretes*: há uma colheita de 700 kg de tomate sem frete, já com o selo **🟢 Extra (A)** da triagem visual. Toque em **Pedir frete p/ amanhã**: ela entra no caminhão coletivo que já está se formando com 4 vizinhos e o app mostra a parte dela e a economia.
+2. **Triagem visual** → *Registrar colheita*: escolha o produto e toque em **Tirar ou escolher foto**. A foto é analisada no aparelho e aparece a classe (Extra/Boa/Comercial/Refugo) com as observações. Uma foto bem vermelha dá A; uma com manchas cai para C ou Refugo; uma borrada pede nova foto.
+3. Ainda como Ana, em *Fretes* há uma carga entregue ontem com **Pix pendente**. Marque **Simular aviso duplicado do banco** e confirme: o pagamento é confirmado uma única vez.
+4. **João (motorista)** → aceite a carga, veja a rota no mapa, faça o check-in de cada parada com o código do QR e confirme a entrega. Os produtores recebem a cobrança Pix.
+5. **Cooperativa** → *Painel*: volumes, economia, **distribuição de qualidade** das colheitas e a tabela de webhooks (o duplicado aparece processado uma vez). Em *Estradas*, marque um bloqueio no mapa sobre a rota: motorista e produtores são avisados.
+6. **Offline**: no Chrome, DevTools → Network → *Offline*. Registre uma colheita (pode anexar a foto): ela fica "guardada no celular" e a classe sai quando o registro sobe. Volte ao online e ela sobe sozinha, sem duplicar.
+7. **Bot**: na tela de login, *Testar o bot*. Envie `colhi 200 kg de alface`, depois `frete`, `status`, `economia`, `score`.
 
 ---
 
@@ -272,6 +274,15 @@ Toda transição passa por uma única função com *compare-and-set* (`UPDATE ..
 
 Regressão logística treinada por gradiente descendente (implementação própria, determinística) sobre 5 sinais da operação no AgroSync: entregas concluídas, pagamentos de frete em até 72 h, volume médio, meses ativos e cancelamentos. Escala de 300 a 900, faixas A a D e limite indicativo de microcrédito. A explicação mostra o peso de cada fator. A base de treino é sintética com semente fixa; em produção, ela é trocada pelo histórico real de microcréditos.
 
+### Triagem visual da safra
+
+Classifica a qualidade do lote a partir de uma foto, em duas partes com uma fronteira clara (as `Caracteristicas`):
+
+- **Percepção, no dispositivo** (`apps/web/src/triagem.ts`): o navegador lê os pixels da foto num canvas pequeno e mede sinais genéricos — fração de cada família de cor, nitidez (energia de gradiente), brilho e quanto do quadro é produto. Roda **offline, sem baixar modelo**, e não conhece a cultura.
+- **Julgamento, no servidor** (`apps/api/src/domain/triagem.ts`): função **pura e determinística** que, por cultura, mapeia essas características em classe (Extra A, Boa B, Comercial C, Refugo) + maturidade, com **fatores explicáveis** (quanto cada sinal somou ou tirou), como o AgroScore. O app nunca dita a nota — a classe é sempre recalculada aqui. Fotos borradas ou com pouco produto não arriscam uma classe: pedem nova foto.
+
+Em produção, a percepção no dispositivo é trocada por um modelo de visão computacional; o julgamento auditável permanece. A foto não é armazenada: guarda-se só uma miniatura pequena e o vetor de características.
+
 ### Modelo de dados
 
 ```mermaid
@@ -308,7 +319,7 @@ Garantias no próprio banco: `UNIQUE` em `pedidos(safra_id)` para pedidos ativos
 
 ## Confiabilidade: cenários testados
 
-`npm test` roda **60 testes automatizados** (Vitest). Todos passam.
+`npm test` roda **72 testes automatizados** (Vitest). Todos passam.
 
 | Área | Cenário | Resultado esperado |
 |---|---|---|
@@ -336,6 +347,10 @@ Garantias no próprio banco: `UNIQUE` em `pedidos(safra_id)` para pedidos ativos
 | Auth | Rota de outro papel | 403 |
 | Linguagem | "trezentos e cinquenta quilos de alface", "10 caixas de morango", "2 toneladas de milho"... | Interpretado corretamente; frase sem quantidade não é inventada |
 | AgroScore | Mais pontualidade / mais cancelamentos | Score sobe / desce (monotonicidade) |
+| Triagem | Mais manchas na foto | Pontuação cai sempre (monotonicidade) |
+| Triagem | Verde é imaturo na fruta, mas é o ponto certo na folhosa | Classificação coerente por cultura |
+| Triagem | Foto borrada ou com pouco produto | Pede nova foto; não arrisca uma classe |
+| Triagem | Mesma foto → mesma classe; app não dita a nota | Determinística e recalculada no servidor |
 | Sensores | Solo seco duas vezes no mesmo dia | Um único alerta |
 | Datas | Virada de mês, de ano e 29/02 | Corretas |
 | Seed | Histórico completo de demonstração | Todo rateio soma o custo da sua carga |
@@ -348,7 +363,7 @@ Garantias no próprio banco: `UNIQUE` em `pedidos(safra_id)` para pedidos ativos
 agrosync/
 ├── apps/
 │   ├── api/                  Node.js + Fastify + TypeScript
-│   │   ├── src/domain/       regras puras: geo, frete, agrupamento, rateio, estados, AgroScore, linguagem
+│   │   ├── src/domain/       regras puras: geo, frete, agrupamento, rateio, estados, AgroScore, triagem visual, linguagem
 │   │   ├── src/services/     casos de uso: fretes, pagamentos, sync, alertas, bot, jobs, painel
 │   │   ├── src/adapters/     Pix, notificação, clima, cotações (simulados + Open-Meteo real)
 │   │   ├── src/routes.ts     rotas HTTP /api/*
@@ -369,7 +384,7 @@ agrosync/
 | Cotações | Simuladas sobre preços de referência | Cepea / CONAB |
 | Sensores | Simulador de gateway (`npm run sim:sensores`) | Gateway LoRaWAN real chamando `POST /api/sensores/leituras` |
 | Voz | Web Speech API do navegador (precisa de internet) | — |
-| Triagem visual da safra | Não implementada no MVP | Modelo de visão computacional no dispositivo |
+| Triagem visual da safra | Percepção da foto no dispositivo (cor, nitidez, cobertura) + classificação determinística por cultura no servidor | Trocar a percepção por um modelo de visão computacional no aparelho; as `Caracteristicas` seguem sendo a fronteira |
 | Power BI | Substituído pelo painel da cooperativa no próprio app | — |
 
 **Ambiente de demonstração: nenhum dinheiro real é movimentado.**
@@ -380,9 +395,9 @@ agrosync/
 
 | # | Área | Onde está no código |
 |---|---|---|
-| 1 | Coleta de dados e identificação de necessidades | `web/pages/produtor/Colheita.tsx`, `web/offline.ts`, `api/services/bot.ts`, `api/simulador-sensores.ts` |
+| 1 | Coleta de dados e identificação de necessidades | `web/pages/produtor/Colheita.tsx`, `web/triagem.ts` (foto no dispositivo), `web/offline.ts`, `api/services/bot.ts`, `api/simulador-sensores.ts` |
 | 2 | Processamento e análise de dados | `api/services/painel.ts`, `api/domain/geo.ts` |
-| 3 | Inteligência artificial e ML | `api/domain/agrupamento.ts` (K-Means), `api/domain/agroscore.ts` (regressão logística), `api/domain/linguagem.ts` |
+| 3 | Inteligência artificial e ML | `api/domain/agrupamento.ts` (K-Means), `api/domain/agroscore.ts` (regressão logística), `api/domain/triagem.ts` (triagem visual), `api/domain/linguagem.ts` |
 | 4 | Geração de alertas e notificações | `api/services/alertas.ts`, `api/services/jobs.ts`, `api/services/bloqueios.ts` |
 | 5 | Dashboards e visualização | `web/pages/produtor/Inicio.tsx`, `web/pages/cooperativa/Painel.tsx` |
 | 6 | Gerenciamento e atendimento das demandas | `api/services/fretes.ts`, `api/services/pagamentos.ts`, `web/pages/motorista/*` |

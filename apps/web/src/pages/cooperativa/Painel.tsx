@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { post } from '../../api';
-import { Barras, Estado, Stat, useConfirmacao } from '../../components/Comuns';
+import { Barras, Estado, SeloQualidade, Stat, useConfirmacao } from '../../components/Comuns';
 import { brl, kg, nomeCultura, quando, useApi } from '../../util';
 
 type Painel = {
@@ -14,6 +14,7 @@ type Painel = {
   kgPorCultura: { cultura: string; kg: number }[];
   kgPorMunicipio: { municipio: string; kg: number; produtores: number }[];
   kgPorMes: { mes: string; kg: number }[];
+  qualidadePorClasse: { classe: string; n: number; kg: number }[];
 };
 type Evento = { event_id: string; tipo: string; resultado: string; recebido_em: string };
 
@@ -97,6 +98,24 @@ export default function PainelCooperativa() {
               <h2>Volume entregue por mês</h2>
               <Barras dados={p.kgPorMes.map((m) => ({ rotulo: mes(m.mes), valor: m.kg }))} formatar={kg} />
             </div>
+
+            {p.qualidadePorClasse.length > 0 && (
+              <div className="card pilha">
+                <h2>Qualidade das colheitas (triagem visual)</h2>
+                <p className="muted peq">Classificação por foto, feita no aparelho do produtor e conferida no servidor.</p>
+                <div className="linha" style={{ flexWrap: 'wrap', gap: 10 }}>
+                  {['A', 'B', 'C', 'refugo'].map((cl) => {
+                    const q = p.qualidadePorClasse.find((x) => x.classe === cl);
+                    if (!q) return null;
+                    return (
+                      <div key={cl} className="linha" style={{ gap: 6 }}>
+                        <SeloQualidade classe={cl} /> <b>{q.n}</b> <span className="muted peq">({kg(q.kg)})</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
       </Estado>

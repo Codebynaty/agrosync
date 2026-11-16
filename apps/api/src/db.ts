@@ -50,7 +50,12 @@ CREATE TABLE IF NOT EXISTS safras (
   perecivel INTEGER NOT NULL,
   origem TEXT NOT NULL CHECK (origem IN ('app','voz','bot','sensor','seed')),
   colhido_em TEXT NOT NULL,
-  criado_em TEXT NOT NULL
+  criado_em TEXT NOT NULL,
+  triagem_classe TEXT,
+  triagem_pontuacao INTEGER,
+  triagem_maturidade TEXT,
+  triagem_json TEXT,
+  triagem_miniatura TEXT
 );
 
 CREATE TABLE IF NOT EXISTS cargas (
@@ -177,7 +182,26 @@ export function abrirBanco(caminho: string): DB {
   db.exec('PRAGMA foreign_keys = ON;');
   if (caminho !== ':memory:') db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
   db.exec(ESQUEMA);
+  migrar(db);
   return db;
+}
+
+/**
+ * Migrações aditivas e idempotentes para bancos criados por versões anteriores
+ * (o esquema usa CREATE TABLE IF NOT EXISTS, que não altera tabelas já existentes).
+ */
+function migrar(db: DB) {
+  const colunas = (tabela: string) => new Set(todos<{ name: string }>(db, `PRAGMA table_info(${tabela})`).map((c) => c.name));
+  const safras = colunas('safras');
+  for (const [nome, tipo] of [
+    ['triagem_classe', 'TEXT'],
+    ['triagem_pontuacao', 'INTEGER'],
+    ['triagem_maturidade', 'TEXT'],
+    ['triagem_json', 'TEXT'],
+    ['triagem_miniatura', 'TEXT'],
+  ] as const) {
+    if (!safras.has(nome)) db.exec(`ALTER TABLE safras ADD COLUMN ${nome} ${tipo}`);
+  }
 }
 
 const profundidade = new WeakMap<DB, number>();

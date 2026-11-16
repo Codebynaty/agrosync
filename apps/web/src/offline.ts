@@ -1,6 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { useEffect, useState } from 'react';
 import { post } from './api';
+import type { Caracteristicas } from './triagem';
 
 /**
  * Fila offline-first. Toda operação de escrita do produtor entra primeiro aqui
@@ -13,7 +14,15 @@ export type OperacaoFila =
   | {
       opId: string;
       tipo: 'criar_safra';
-      dados: { id: string; cultura: string; quantidadeKg: number; perecivel?: boolean; colhidoEm?: string; origem?: 'app' | 'voz' };
+      dados: {
+        id: string;
+        cultura: string;
+        quantidadeKg: number;
+        perecivel?: boolean;
+        colhidoEm?: string;
+        origem?: 'app' | 'voz';
+        triagem?: { caracteristicas: Caracteristicas; miniatura?: string };
+      };
       criadaEm: string;
       descricao: string;
     }

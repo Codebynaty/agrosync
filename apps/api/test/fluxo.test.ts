@@ -325,6 +325,50 @@ describe('bot, sensores e alertas', () => {
   });
 });
 
+describe('triagem visual da safra', () => {
+  beforeEach(() => novoApp());
+
+  const fotoBoa = {
+    caracteristicas: { vermelho: 0.85, laranja: 0, amarelo: 0, verde: 0, marrom: 0, escuro: 0, claro: 0, cobertura: 0.85, nitidez: 0.8, brilho: 0.5 },
+    miniatura: 'data:image/jpeg;base64,/9j/abc',
+  };
+
+  it('classifica a colheita ao registrar com foto (POST /api/safras)', async () => {
+    const t = await login('5511900000001');
+    const s = (await req(t).post('/api/safras', { cultura: 'tomate', quantidadeKg: 300, triagem: fotoBoa })).json();
+    expect(s.triagem_classe).toBe('A');
+    expect(s.triagem_pontuacao).toBeGreaterThanOrEqual(80);
+    expect(s.triagem_miniatura).toBe(fotoBoa.miniatura);
+    const parsed = JSON.parse(s.triagem_json);
+    expect(parsed.caracteristicas.vermelho).toBe(0.85);
+  });
+
+  it('o servidor é a fonte da verdade: a classe vem do cálculo, não do app', async () => {
+    const t = await login('5511900000001');
+    // características de amostra deteriorada → refugo, independentemente de qualquer palpite do cliente
+    const ruim = { ...fotoBoa.caracteristicas, vermelho: 0.2, escuro: 0.6, marrom: 0.2 };
+    const s = (await req(t).post('/api/safras', { cultura: 'tomate', quantidadeKg: 300, triagem: { caracteristicas: ruim } })).json();
+    expect(s.triagem_classe).toBe('refugo');
+  });
+
+  it('a triagem sobe junto pela fila offline (/sync) e não duplica', async () => {
+    const t = await login('5511900000001');
+    const safraId = crypto.randomUUID();
+    const op = { opId: crypto.randomUUID(), tipo: 'criar_safra', dados: { id: safraId, cultura: 'alface', quantidadeKg: 120, triagem: { caracteristicas: { ...fotoBoa.caracteristicas, vermelho: 0, verde: 0.85 } } } };
+    await req(t).post('/api/sync', { operacoes: [op] });
+    await req(t).post('/api/sync', { operacoes: [op] });
+    const linha = um<{ triagem_classe: string }>(ctx.db, 'SELECT triagem_classe FROM safras WHERE id = ?', safraId)!;
+    expect(linha.triagem_classe).toBe('A');
+    expect(um<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM safras')!.n).toBe(1);
+  });
+
+  it('rejeita características fora do intervalo 0..1', async () => {
+    const t = await login('5511900000001');
+    const r = await req(t).post('/api/safras', { cultura: 'tomate', quantidadeKg: 300, triagem: { caracteristicas: { ...fotoBoa.caracteristicas, vermelho: 2 } } });
+    expect(r.statusCode).toBe(400);
+  });
+});
+
 describe('dados de demonstração', () => {
   it('o seed roda de ponta a ponta e gera histórico consistente', async () => {
     const r = await criarApp({ db: abrirBanco(':memory:'), agora: () => AGORA, config: { webDist: '/nao-existe' } });

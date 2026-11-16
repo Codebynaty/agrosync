@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { post } from '../../api';
-import { Chip, Estado, QR, useConfirmacao } from '../../components/Comuns';
+import { Chip, Estado, QR, SeloQualidade, useConfirmacao } from '../../components/Comuns';
 import { useAoSincronizar, useFila } from '../../offline';
 import type { Pedido, Safra } from '../../tipos';
 import { brl, dataBR, hojeISO, kg, nomeCultura, useApi } from '../../util';
@@ -162,7 +162,14 @@ export default function Fretes() {
           <h2>Colheitas sem frete</h2>
           {semFrete.map((s) => (
             <div key={s.id} className="card linha entre">
-              <div><b>{kg(s.quantidade_kg)} de {nomeCultura(s.cultura).toLowerCase()}</b><div className="muted peq">colhido em {dataBR(s.colhido_em)}</div></div>
+              <div className="linha" style={{ gap: 10 }}>
+                {s.triagem_miniatura && <img src={s.triagem_miniatura} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, flex: 'none' }} />}
+                <div>
+                  <b>{kg(s.quantidade_kg)} de {nomeCultura(s.cultura).toLowerCase()}</b>
+                  <div className="muted peq">colhido em {dataBR(s.colhido_em)}</div>
+                  {s.triagem_classe && <div style={{ marginTop: 4 }}><SeloQualidade classe={s.triagem_classe} pontuacao={s.triagem_pontuacao} mini /></div>}
+                </div>
+              </div>
               <button className="btn primario peq" onClick={() => void pedirFrete(s)}>Pedir frete p/ amanhã</button>
             </div>
           ))}

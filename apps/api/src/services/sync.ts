@@ -4,6 +4,27 @@ import { agoraISO, ErroApp, type Contexto } from './contexto.js';
 import { criarPedido } from './fretes.js';
 import { criarSafra } from './safras.js';
 
+const Fracao = z.number().min(0).max(1);
+
+/** Características percebidas na foto pelo dispositivo (ver domain/triagem.ts). */
+export const CaracteristicasSchema = z.object({
+  vermelho: Fracao,
+  laranja: Fracao,
+  amarelo: Fracao,
+  verde: Fracao,
+  marrom: Fracao,
+  escuro: Fracao,
+  claro: Fracao,
+  cobertura: Fracao,
+  nitidez: Fracao,
+  brilho: Fracao,
+});
+
+export const TriagemSchema = z.object({
+  caracteristicas: CaracteristicasSchema,
+  miniatura: z.string().max(64 * 1024).optional(),
+});
+
 export const OperacaoSchema = z.discriminatedUnion('tipo', [
   z.object({
     opId: z.string().uuid(),
@@ -16,6 +37,7 @@ export const OperacaoSchema = z.discriminatedUnion('tipo', [
       perecivel: z.boolean().optional(),
       colhidoEm: z.string().optional(),
       origem: z.enum(['app', 'voz']).optional(),
+      triagem: TriagemSchema.optional(),
     }),
   }),
   z.object({

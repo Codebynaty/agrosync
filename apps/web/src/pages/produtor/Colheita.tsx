@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { post } from '../../api';
+import { SeloQualidade } from '../../components/Comuns';
 import { enfileirar, useFila, uuid } from '../../offline';
+import { analisarFoto, dicaLocal, type Caracteristicas, type ResultadoTriagem } from '../../triagem';
 import type { Destino } from '../../tipos';
 import { CULTURAS, culturaPorId, dataBR, hojeISO, kg, useApi } from '../../util';
 
@@ -39,13 +41,54 @@ export default function Colheita() {
   const [transcricao, setTranscricao] = useState('');
   const [erroVoz, setErroVoz] = useState<string | null>(null);
   const [salvo, setSalvo] = useState<string | null>(null);
+  const [foto, setFoto] = useState<{ caracteristicas: Caracteristicas; miniatura?: string } | null>(null);
+  const [previa, setPrevia] = useState<ResultadoTriagem | null>(null);
+  const [analisando, setAnalisando] = useState(false);
+  const [dica, setDica] = useState<string | null>(null);
   const rec = useRef<SR | null>(null);
+  const fotoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!destinoId && destinos.dados?.length) setDestinoId(destinos.dados.find((d) => d.id === 'ceagesp')?.id ?? destinos.dados[0].id);
   }, [destinos.dados, destinoId]);
 
   const totalKg = Math.round(qtd * unidade.fator);
+
+  // Classifica a foto no servidor (fonte única) assim que há foto e produto escolhidos.
+  useEffect(() => {
+    if (!foto || !cultura || !navigator.onLine) {
+      setPrevia(null);
+      return;
+    }
+    let vivo = true;
+    post<ResultadoTriagem>('/triagem/classificar', { cultura, caracteristicas: foto.caracteristicas })
+      .then((r) => vivo && setPrevia(r))
+      .catch(() => vivo && setPrevia(null));
+    return () => {
+      vivo = false;
+    };
+  }, [foto, cultura]);
+
+  async function escolherFoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAnalisando(true);
+    setPrevia(null);
+    setDica(null);
+    try {
+      const r = await analisarFoto(file);
+      if (!r) {
+        setDica('Não consegui ler a foto. Tente outra.');
+        setFoto(null);
+        return;
+      }
+      setFoto(r);
+      setDica(dicaLocal(r.caracteristicas));
+    } finally {
+      setAnalisando(false);
+    }
+  }
 
   function ouvir() {
     if (!SpeechRec) {
@@ -89,7 +132,11 @@ export default function Colheita() {
     const safraId = uuid();
     const descricao = `${kg(totalKg)} de ${c.nome.toLowerCase()}`;
     await enfileirar([
-      { tipo: 'criar_safra', dados: { id: safraId, cultura, quantidadeKg: totalKg, origem, colhidoEm: new Date().toISOString() }, descricao: `Colheita: ${descricao}` },
+      {
+        tipo: 'criar_safra',
+        dados: { id: safraId, cultura, quantidadeKg: totalKg, origem, colhidoEm: new Date().toISOString(), ...(foto ? { triagem: foto } : {}) },
+        descricao: `Colheita: ${descricao}`,
+      },
       ...(pedirFrete
         ? [{ tipo: 'criar_pedido' as const, dados: { id: uuid(), safraId, destinoId: destinoId || undefined, dataDesejada: data }, descricao: `Frete: ${descricao}` }]
         : []),
@@ -103,6 +150,9 @@ export default function Colheita() {
     setQtd(0);
     setTranscricao('');
     setOrigem('app');
+    setFoto(null);
+    setPrevia(null);
+    setDica(null);
   }
 
   return (
@@ -152,6 +202,38 @@ export default function Colheita() {
           ))}
         </div>
         {unidade.fator > 1 && qtd > 0 && <div className="muted">= {kg(totalKg)}</div>}
+      </section>
+
+      <section className="pilha">
+        <h2>3. Foto da colheita <span className="muted peq" style={{ fontWeight: 400 }}>(opcional)</span></h2>
+        <p className="muted peq">A foto é analisada aqui no aparelho e classifica a qualidade do lote (cor, maturação e manchas). Ajuda a mostrar o padrão ao comprador.</p>
+        <input ref={fotoRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => void escolherFoto(e)} />
+        <button type="button" className="btn bloco" onClick={() => fotoRef.current?.click()}>
+          📷 {foto ? 'Trocar foto' : 'Tirar ou escolher foto'}
+        </button>
+        {analisando && <div className="muted peq">Analisando a foto…</div>}
+        {foto && (
+          <div className="card foto-previa">
+            {foto.miniatura && <img src={foto.miniatura} alt="Foto da colheita" />}
+            <div className="pilha" style={{ gap: 6 }}>
+              {!cultura && <div className="muted peq">Escolha o produto acima para ver a classificação.</div>}
+              {previa && (
+                <>
+                  <div className="linha" style={{ gap: 8 }}>
+                    <SeloQualidade classe={previa.classe} pontuacao={previa.pontuacao} />
+                    {previa.confiavel && previa.ajustePrecoPct !== 0 && (
+                      <span className="peq muted">preço de referência {previa.ajustePrecoPct > 0 ? '+' : ''}{previa.ajustePrecoPct}%</span>
+                    )}
+                  </div>
+                  {previa.observacoes.map((o, i) => <div key={i} className="peq">• {o}</div>)}
+                </>
+              )}
+              {cultura && !previa && navigator.onLine && <div className="muted peq">Classificando…</div>}
+              {cultura && !navigator.onLine && <div className="muted peq">Sem sinal: a classificação é feita quando o registro subir.</div>}
+              {dica && <div className="aviso warn peq" style={{ padding: '6px 10px' }}>{dica}</div>}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="card pilha">

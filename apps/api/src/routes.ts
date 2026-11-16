@@ -5,6 +5,7 @@ import { exec, todos, um } from './db.js';
 import { CULTURAS } from './domain/culturas.js';
 import { ROTULO_PEDIDO } from './domain/estados.js';
 import { interpretarColheita } from './domain/linguagem.js';
+import { classificarSafra } from './domain/triagem.js';
 import { dataLocal, somarDias } from './domain/tempo.js';
 import { solicitarCodigo, verificarCodigo } from './services/auth.js';
 import { registrarBloqueio } from './services/bloqueios.js';
@@ -25,7 +26,7 @@ import { painelCooperativa, painelProdutor } from './services/painel.js';
 import { processarWebhookPix } from './services/pagamentos.js';
 import { criarSafra } from './services/safras.js';
 import { agroScoreDoProdutor } from './services/score.js';
-import { OperacaoSchema, sincronizar } from './services/sync.js';
+import { CaracteristicasSchema, OperacaoSchema, sincronizar, TriagemSchema } from './services/sync.js';
 import { notificar } from './services/alertas.js';
 
 export type Papel = 'produtor' | 'motorista' | 'cooperativa';
@@ -135,11 +136,19 @@ export function registrarRotas(app: FastifyInstance, ctx: Contexto) {
         quantidadeKg: z.number().int().positive(),
         perecivel: z.boolean().optional(),
         origem: z.enum(['app', 'voz']).optional(),
+        triagem: TriagemSchema.optional(),
       })
       .parse(req.body);
     const r = criarSafra(ctx, req.user.sub, d);
     rep.code(r.criada ? 201 : 200);
     return r.safra;
+  });
+
+  // Prévia da triagem visual: o app manda as características percebidas na foto e
+  // recebe a mesma classificação que será gravada (fonte única, no servidor).
+  app.post('/api/triagem/classificar', { preHandler: produtor }, async (req) => {
+    const { cultura, caracteristicas } = z.object({ cultura: z.string(), caracteristicas: CaracteristicasSchema }).parse(req.body);
+    return classificarSafra(cultura, caracteristicas);
   });
 
   app.post('/api/sync', { preHandler: produtor }, async (req) => {

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { exec, transacao, um } from '../db.js';
 import { buscarCultura } from '../domain/culturas.js';
+import { classificarSafra, type Caracteristicas } from '../domain/triagem.js';
 import { agoraISO, conflito, invalido, naoEncontrado, proibido, type Contexto } from './contexto.js';
 
 export type SafraLinha = {
@@ -13,7 +14,14 @@ export type SafraLinha = {
   origem: string;
   colhido_em: string;
   criado_em: string;
+  triagem_classe: string | null;
+  triagem_pontuacao: number | null;
+  triagem_maturidade: string | null;
+  triagem_json: string | null;
+  triagem_miniatura: string | null;
 };
+
+export type TriagemEntrada = { caracteristicas: Caracteristicas; miniatura?: string };
 
 export type NovaSafra = {
   id?: string;
@@ -23,7 +31,11 @@ export type NovaSafra = {
   perecivel?: boolean;
   colhidoEm?: string;
   origem?: 'app' | 'voz' | 'bot' | 'sensor' | 'seed';
+  triagem?: TriagemEntrada;
 };
+
+/** Miniatura só é aceita se for um data URL de imagem pequeno (evita inchar o banco). */
+const MAX_MINIATURA = 64 * 1024;
 
 export function propriedadePadrao(ctx: Contexto, produtorId: string) {
   return um<{ id: string; lat: number; lng: number; municipio: string }>(
@@ -61,11 +73,29 @@ export function criarSafra(ctx: Contexto, produtorId: string, d: NovaSafra): { s
     if (!prop) throw naoEncontrado('Propriedade');
     if (prop.produtor_id !== produtorId) throw proibido('Propriedade de outro produtor.');
 
+    // Triagem visual: o julgamento é refeito no servidor a partir das características
+    // percebidas no dispositivo (o app não dita a classe; aqui é a fonte da verdade).
+    let classe: string | null = null;
+    let pontuacao: number | null = null;
+    let maturidade: string | null = null;
+    let triagemJson: string | null = null;
+    let miniatura: string | null = null;
+    if (d.triagem) {
+      const resultado = classificarSafra(cultura.id, d.triagem.caracteristicas);
+      classe = resultado.classe;
+      pontuacao = resultado.pontuacao;
+      maturidade = resultado.maturidade;
+      triagemJson = JSON.stringify({ ...resultado, caracteristicas: d.triagem.caracteristicas });
+      const m = d.triagem.miniatura;
+      if (m && m.startsWith('data:image/') && m.length <= MAX_MINIATURA) miniatura = m;
+    }
+
     const agora = agoraISO(ctx);
     exec(
       ctx.db,
-      `INSERT INTO safras (id, produtor_id, propriedade_id, cultura, quantidade_kg, perecivel, origem, colhido_em, criado_em)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO safras (id, produtor_id, propriedade_id, cultura, quantidade_kg, perecivel, origem, colhido_em, criado_em,
+                           triagem_classe, triagem_pontuacao, triagem_maturidade, triagem_json, triagem_miniatura)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       produtorId,
       prop.id,
@@ -75,6 +105,11 @@ export function criarSafra(ctx: Contexto, produtorId: string, d: NovaSafra): { s
       d.origem ?? 'app',
       d.colhidoEm ?? agora,
       agora,
+      classe,
+      pontuacao,
+      maturidade,
+      triagemJson,
+      miniatura,
     );
     return { safra: um<SafraLinha>(ctx.db, 'SELECT * FROM safras WHERE id = ?', id)!, criada: true };
   });

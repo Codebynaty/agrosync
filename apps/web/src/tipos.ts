@@ -33,6 +33,10 @@ export type Safra = {
   origem: string;
   colhido_em: string;
   pedido_id: string | null;
+  triagem_classe: string | null;
+  triagem_pontuacao: number | null;
+  triagem_maturidade: string | null;
+  triagem_miniatura: string | null;
 };
 
 export type Alerta = { id: string; tipo: string; canal: string; titulo: string; mensagem: string; lido: number; criado_em: string };

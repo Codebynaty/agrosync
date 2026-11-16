@@ -1,6 +1,7 @@
 import QRCode from 'qrcode';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Previsao } from '../tipos';
+import { APARENCIA_CLASSE, type ClasseSafra } from '../triagem';
 import { diaSemana } from '../util';
 
 export function Estado({ carregando, erro, vazio, children }: { carregando?: boolean; erro?: string | null; vazio?: boolean | string; children?: ReactNode }) {
@@ -25,6 +26,22 @@ const TOM: Record<string, string> = {
 };
 export function Chip({ status, children }: { status: string; children: ReactNode }) {
   return <span className={`chip ${TOM[status] ?? ''}`}>{children}</span>;
+}
+
+const ROTULO_CLASSE: Record<ClasseSafra, string> = {
+  A: 'Extra (A)', B: 'Boa (B)', C: 'Comercial (C)', refugo: 'Refugo', rever: 'Refazer foto',
+};
+
+/** Selo de qualidade da triagem visual. */
+export function SeloQualidade({ classe, pontuacao, mini }: { classe?: string | null; pontuacao?: number | null; mini?: boolean }) {
+  if (!classe || !(classe in APARENCIA_CLASSE)) return null;
+  const c = classe as ClasseSafra;
+  const ap = APARENCIA_CLASSE[c];
+  return (
+    <span className={`selo ${ap.tom}`} title={`Triagem visual da foto${pontuacao != null && c !== 'rever' ? ` · ${pontuacao}/100` : ''}`}>
+      <span aria-hidden>{ap.emoji}</span> {mini ? c.toUpperCase() : ROTULO_CLASSE[c]}
+    </span>
+  );
 }
 
 /** Barras horizontais de série única: valor escrito na ponta, tooltip nativo por barra. */

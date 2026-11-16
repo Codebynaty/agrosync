@@ -74,5 +74,12 @@ export function painelCooperativa(ctx: Contexto) {
       `SELECT substr(data_desejada, 1, 7) AS mes, SUM(volume_kg) AS kg FROM pedidos
         WHERE status IN ('entregue','pago') GROUP BY mes ORDER BY mes`,
     ),
+    // Triagem visual: distribuição de qualidade das colheitas fotografadas.
+    qualidadePorClasse: todos<{ classe: string; n: number; kg: number }>(
+      ctx.db,
+      `SELECT triagem_classe AS classe, COUNT(*) AS n, COALESCE(SUM(quantidade_kg),0) AS kg
+         FROM safras WHERE triagem_classe IS NOT NULL AND triagem_classe <> 'rever'
+        GROUP BY triagem_classe`,
+    ),
   };
 }

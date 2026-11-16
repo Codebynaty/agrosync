@@ -7,6 +7,7 @@ import type { Contexto } from './services/contexto.js';
 import { aceitarCarga, agrupar, cancelarPedido, checkin, criarPedido, entregarCarga, freteIndividual } from './services/fretes.js';
 import { processarWebhookPix } from './services/pagamentos.js';
 import { criarSafra } from './services/safras.js';
+import type { Caracteristicas } from './domain/triagem.js';
 
 /**
  * Dados de demonstração: todos os nomes, telefones e locais de propriedades são fictícios.
@@ -63,6 +64,35 @@ function rng(semente: number) {
 
 /** Meio-dia (horário de Brasília) da data. */
 const em = (data: string, hora = 8) => new Date(`${data}T${String(hora).padStart(2, '0')}:00:00-03:00`);
+
+const COR_MADURA_SEED: Record<string, keyof Caracteristicas> = {
+  tomate: 'vermelho', morango: 'vermelho', cafe: 'vermelho',
+  laranja: 'laranja', cenoura: 'laranja',
+  milho: 'amarelo', banana: 'amarelo', batata: 'amarelo',
+  alface: 'verde', couve: 'verde',
+  mandioca: 'marrom', feijao: 'marrom',
+};
+
+/**
+ * Características plausíveis de uma foto de demonstração, com a semente do seed,
+ * para o painel e os selos nascerem com uma distribuição realista de qualidade.
+ */
+function triagemSeed(cultura: string, r: () => number): { caracteristicas: Caracteristicas } {
+  const fam = COR_MADURA_SEED[cultura] ?? 'verde';
+  const folhosa = fam === 'verde';
+  const roll = r();
+  const escuro = roll < 0.12 ? 0.25 + r() * 0.3 : r() * 0.07; // ~12% com manchas
+  const imaturo = !folhosa && roll > 0.85 ? 0.3 + r() * 0.25 : r() * 0.04; // alguns verdes/murchos
+  const maduro = Math.max(0.2, 0.88 - escuro - imaturo - r() * 0.08);
+  const c: Caracteristicas = {
+    vermelho: 0, laranja: 0, amarelo: 0, verde: 0, marrom: 0,
+    escuro, claro: r() * 0.05, cobertura: 0.6 + r() * 0.3, nitidez: 0.55 + r() * 0.4, brilho: 0.4 + r() * 0.25,
+  };
+  c[fam] = maduro;
+  if (folhosa) c.amarelo = imaturo; // folhosa: imaturo vira amarelado (murcha)
+  else c.verde = imaturo;
+  return { caracteristicas: c };
+}
 
 export function bancoVazio(ctx: Contexto) {
   return !um(ctx.db, 'SELECT 1 FROM usuarios LIMIT 1');
@@ -122,7 +152,7 @@ export async function popular(base: Contexto) {
     for (const p of participantes) {
       const cultura = escolher(CULTURAS_POR_PRODUTOR[p]);
       const kg = Math.round((200 + r() * 1400) / 10) * 10;
-      const { safra } = criarSafra(ctx, p, { cultura, quantidadeKg: kg, origem: 'seed', colhidoEm: relogio.toISOString() });
+      const { safra } = criarSafra(ctx, p, { cultura, quantidadeKg: kg, origem: 'seed', colhidoEm: relogio.toISOString(), triagem: triagemSeed(cultura, r) });
       await criarPedido(ctx, p, { safraId: safra.id, destinoId: 'ceagesp', dataDesejada: somarDias(data, 1) });
     }
     relogio = em(data, 9);
@@ -176,13 +206,18 @@ export async function popular(base: Contexto) {
     ['u-dirceu', 'mandioca', 1500],
     ['u-elza', 'alface', 600],
   ] as const) {
-    const { safra } = criarSafra(ctx, p, { cultura, quantidadeKg: kg, origem: 'seed' });
+    const { safra } = criarSafra(ctx, p, { cultura, quantidadeKg: kg, origem: 'seed', triagem: triagemSeed(cultura, r) });
     await criarPedido(ctx, p, { safraId: safra.id, destinoId: 'ceagesp', dataDesejada: somarDias(hojeReal, 1) });
   }
   await agrupar(ctx, 'seed');
 
-  // Ana tem uma colheita registrada hoje, ainda sem frete (para a demo).
-  criarSafra(ctx, 'u-ana', { cultura: 'tomate', quantidadeKg: 700, origem: 'seed' });
+  // Ana tem uma colheita registrada hoje, ainda sem frete (para a demo): tomate Extra (A).
+  criarSafra(ctx, 'u-ana', {
+    cultura: 'tomate',
+    quantidadeKg: 700,
+    origem: 'seed',
+    triagem: { caracteristicas: { vermelho: 0.88, laranja: 0.04, amarelo: 0, verde: 0, marrom: 0, escuro: 0.01, claro: 0.02, cobertura: 0.82, nitidez: 0.82, brilho: 0.52 } },
+  });
 
   // Sensores: últimas 24 h na propriedade da Ana.
   for (let h = 24; h >= 0; h -= 2) {
