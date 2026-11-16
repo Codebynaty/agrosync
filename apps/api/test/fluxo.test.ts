@@ -367,6 +367,24 @@ describe('triagem visual da safra', () => {
     const r = await req(t).post('/api/safras', { cultura: 'tomate', quantidadeKg: 300, triagem: { caracteristicas: { ...fotoBoa.caracteristicas, vermelho: 2 } } });
     expect(r.statusCode).toBe(400);
   });
+
+  it('GET /api/safras traz o valor estimado ajustado pela classe de qualidade', async () => {
+    type Linha = { triagem_classe: string | null; preco_centavos_kg: number; valor_bruto_centavos: number; valor_estimado_centavos: number; ajuste_pct: number };
+    const t = await login('5511900000001');
+    await req(t).post('/api/safras', { cultura: 'tomate', quantidadeKg: 300, triagem: fotoBoa }); // classe A
+    await req(t).post('/api/safras', { cultura: 'tomate', quantidadeKg: 200 }); // sem foto → sem ajuste
+    const lista = (await req(t).get('/api/safras')).json() as Linha[];
+
+    const comFoto = lista.find((s) => s.triagem_classe === 'A')!;
+    expect(comFoto.preco_centavos_kg).toBeGreaterThan(0);
+    expect(comFoto.valor_bruto_centavos).toBe(comFoto.preco_centavos_kg * 300);
+    expect(comFoto.ajuste_pct).toBe(10);
+    expect(comFoto.valor_estimado_centavos).toBe(Math.round(comFoto.valor_bruto_centavos * 1.1));
+
+    const semFoto = lista.find((s) => s.triagem_classe === null)!;
+    expect(semFoto.ajuste_pct).toBe(0);
+    expect(semFoto.valor_estimado_centavos).toBe(semFoto.valor_bruto_centavos);
+  });
 });
 
 describe('dados de demonstração', () => {

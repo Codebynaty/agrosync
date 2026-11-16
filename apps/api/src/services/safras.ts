@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
-import { exec, transacao, um } from '../db.js';
+import { exec, todos, transacao, um } from '../db.js';
 import { buscarCultura } from '../domain/culturas.js';
-import { classificarSafra, type Caracteristicas } from '../domain/triagem.js';
+import { dataLocal } from '../domain/tempo.js';
+import { classificarSafra, valorEstimado, type Caracteristicas, type ClasseSafra } from '../domain/triagem.js';
 import { agoraISO, conflito, invalido, naoEncontrado, proibido, type Contexto } from './contexto.js';
 
 export type SafraLinha = {
@@ -22,6 +23,34 @@ export type SafraLinha = {
 };
 
 export type TriagemEntrada = { caracteristicas: Caracteristicas; miniatura?: string };
+
+export type SafraComValor = SafraLinha & {
+  pedido_id: string | null;
+  preco_centavos_kg: number;
+  valor_bruto_centavos: number;
+  valor_estimado_centavos: number;
+  ajuste_pct: number;
+};
+
+/**
+ * Lista as colheitas do produtor já com o valor estimado em reais: cotação do dia
+ * × quantidade, ajustado pela classe da triagem. O cálculo mora no servidor para
+ * que app, bot e painel mostrem exatamente o mesmo número.
+ */
+export async function listarSafras(ctx: Contexto, produtorId: string): Promise<SafraComValor[]> {
+  const linhas = todos<SafraLinha & { pedido_id: string | null }>(
+    ctx.db,
+    `SELECT s.*, (SELECT p.id FROM pedidos p WHERE p.safra_id = s.id AND p.status <> 'cancelado') AS pedido_id
+       FROM safras s WHERE s.produtor_id = ? ORDER BY s.criado_em DESC LIMIT 100`,
+    produtorId,
+  );
+  const cot = Object.fromEntries((await ctx.cotacoes.cotacoes(dataLocal(ctx.agora()))).map((c) => [c.cultura, c.precoCentavosKg]));
+  return linhas.map((s) => {
+    const preco = cot[s.cultura] ?? 0;
+    const v = valorEstimado(preco, s.quantidade_kg, s.triagem_classe as ClasseSafra | null);
+    return { ...s, preco_centavos_kg: preco, valor_bruto_centavos: v.brutoCentavos, valor_estimado_centavos: v.ajustadoCentavos, ajuste_pct: v.ajustePct };
+  });
+}
 
 export type NovaSafra = {
   id?: string;

@@ -5,7 +5,7 @@ import { SeloQualidade } from '../../components/Comuns';
 import { enfileirar, useFila, uuid } from '../../offline';
 import { analisarFoto, dicaLocal, type Caracteristicas, type ResultadoTriagem } from '../../triagem';
 import type { Destino } from '../../tipos';
-import { CULTURAS, culturaPorId, dataBR, hojeISO, kg, useApi } from '../../util';
+import { brl, CULTURAS, culturaPorId, dataBR, hojeISO, kg, useApi } from '../../util';
 
 type SR = {
   lang: string;
@@ -30,6 +30,7 @@ const UNIDADES = [
 export default function Colheita() {
   const fila = useFila();
   const destinos = useApi<Destino[]>('/destinos');
+  const cotacoes = useApi<{ cultura: string; precoCentavosKg: number }[]>('/cotacoes');
   const [cultura, setCultura] = useState<string | null>(null);
   const [qtd, setQtd] = useState(0);
   const [unidade, setUnidade] = useState(UNIDADES[0]);
@@ -53,6 +54,7 @@ export default function Colheita() {
   }, [destinos.dados, destinoId]);
 
   const totalKg = Math.round(qtd * unidade.fator);
+  const precoKg = cultura ? cotacoes.dados?.find((c) => c.cultura === cultura)?.precoCentavosKg ?? 0 : 0;
 
   // Classifica a foto no servidor (fonte única) assim que há foto e produto escolhidos.
   useEffect(() => {
@@ -226,6 +228,12 @@ export default function Colheita() {
                     )}
                   </div>
                   {previa.observacoes.map((o, i) => <div key={i} className="peq">• {o}</div>)}
+                  {previa.confiavel && precoKg > 0 && totalKg > 0 && (
+                    <div className="peq" style={{ marginTop: 2 }}>
+                      ≈ <b>{brl(Math.round((precoKg * totalKg * (100 + previa.ajustePrecoPct)) / 100))}</b> estimado
+                      <span className="muted"> ({kg(totalKg)} × {brl(precoKg)}{previa.ajustePrecoPct !== 0 ? `, ${previa.ajustePrecoPct > 0 ? '+' : ''}${previa.ajustePrecoPct}% qualidade` : ''})</span>
+                    </div>
+                  )}
                 </>
               )}
               {cultura && !previa && navigator.onLine && <div className="muted peq">Classificando…</div>}

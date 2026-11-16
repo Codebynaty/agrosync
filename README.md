@@ -115,7 +115,7 @@ Todos os nomes, telefones e propriedades são fictícios.
 
 ## Roteiro de demonstração
 
-1. **Ana (produtora)** → *Fretes*: há uma colheita de 700 kg de tomate sem frete, já com o selo **🟢 Extra (A)** da triagem visual. Toque em **Pedir frete p/ amanhã**: ela entra no caminhão coletivo que já está se formando com 4 vizinhos e o app mostra a parte dela e a economia.
+1. **Ana (produtora)** → *Fretes*: há uma colheita de 700 kg de tomate sem frete, já com o selo **🟢 Extra (A)** da triagem visual e o **valor estimado a preço de hoje, ajustado pela qualidade** (+10%). Toque em **Pedir frete p/ amanhã**: ela entra no caminhão coletivo que já está se formando com 4 vizinhos e o app mostra a parte dela e a economia.
 2. **Triagem visual** → *Registrar colheita*: escolha o produto e toque em **Tirar ou escolher foto**. A foto é analisada no aparelho e aparece a classe (Extra/Boa/Comercial/Refugo) com as observações. Uma foto bem vermelha dá A; uma com manchas cai para C ou Refugo; uma borrada pede nova foto.
 3. Ainda como Ana, em *Fretes* há uma carga entregue ontem com **Pix pendente**. Marque **Simular aviso duplicado do banco** e confirme: o pagamento é confirmado uma única vez.
 4. **João (motorista)** → aceite a carga, veja a rota no mapa, faça o check-in de cada parada com o código do QR e confirme a entrega. Os produtores recebem a cobrança Pix.
@@ -281,6 +281,8 @@ Classifica a qualidade do lote a partir de uma foto, em duas partes com uma fron
 - **Percepção, no dispositivo** (`apps/web/src/triagem.ts`): o navegador lê os pixels da foto num canvas pequeno e mede sinais genéricos — fração de cada família de cor, nitidez (energia de gradiente), brilho e quanto do quadro é produto. Roda **offline, sem baixar modelo**, e não conhece a cultura.
 - **Julgamento, no servidor** (`apps/api/src/domain/triagem.ts`): função **pura e determinística** que, por cultura, mapeia essas características em classe (Extra A, Boa B, Comercial C, Refugo) + maturidade, com **fatores explicáveis** (quanto cada sinal somou ou tirou), como o AgroScore. O app nunca dita a nota — a classe é sempre recalculada aqui. Fotos borradas ou com pouco produto não arriscam uma classe: pedem nova foto.
 
+A classe vira **valor**: o registro de colheita, a lista de fretes e o painel mostram o **preço estimado do lote** — cotação do dia × quantidade, **ajustado pela qualidade** (Extra +10%, Comercial −15%, Refugo −45%). O cálculo (`valorEstimado`) é único no servidor, para app, bot e painel darem sempre o mesmo número; sem foto, o valor aparece sem ajuste.
+
 Em produção, a percepção no dispositivo é trocada por um modelo de visão computacional; o julgamento auditável permanece. A foto não é armazenada: guarda-se só uma miniatura pequena e o vetor de características.
 
 ### Modelo de dados
@@ -319,7 +321,7 @@ Garantias no próprio banco: `UNIQUE` em `pedidos(safra_id)` para pedidos ativos
 
 ## Confiabilidade: cenários testados
 
-`npm test` roda **72 testes automatizados** (Vitest). Todos passam.
+`npm test` roda **76 testes automatizados** (Vitest). Todos passam.
 
 | Área | Cenário | Resultado esperado |
 |---|---|---|

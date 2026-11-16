@@ -168,6 +168,14 @@ export default function Fretes() {
                   <b>{kg(s.quantidade_kg)} de {nomeCultura(s.cultura).toLowerCase()}</b>
                   <div className="muted peq">colhido em {dataBR(s.colhido_em)}</div>
                   {s.triagem_classe && <div style={{ marginTop: 4 }}><SeloQualidade classe={s.triagem_classe} pontuacao={s.triagem_pontuacao} mini /></div>}
+                  {s.valor_estimado_centavos != null && s.valor_estimado_centavos > 0 && (
+                    <div className="peq" style={{ marginTop: 4 }}>
+                      ≈ <b>{brl(s.valor_estimado_centavos)}</b> <span className="muted">a preço de hoje</span>
+                      {!!s.ajuste_pct && (
+                        <span className="muted"> ({s.ajuste_pct > 0 ? '+' : ''}{s.ajuste_pct}% pela qualidade)</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <button className="btn primario peq" onClick={() => void pedirFrete(s)}>Pedir frete p/ amanhã</button>

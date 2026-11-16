@@ -24,7 +24,7 @@ import {
 import { executarJobs } from './services/jobs.js';
 import { painelCooperativa, painelProdutor } from './services/painel.js';
 import { processarWebhookPix } from './services/pagamentos.js';
-import { criarSafra } from './services/safras.js';
+import { criarSafra, listarSafras } from './services/safras.js';
 import { agroScoreDoProdutor } from './services/score.js';
 import { CaracteristicasSchema, OperacaoSchema, sincronizar, TriagemSchema } from './services/sync.js';
 import { notificar } from './services/alertas.js';
@@ -118,14 +118,7 @@ export function registrarRotas(app: FastifyInstance, ctx: Contexto) {
     return todos(db, 'SELECT tipo, valor, medido_em FROM leituras_sensor WHERE propriedade_id = ? ORDER BY medido_em DESC LIMIT 48', id);
   });
 
-  app.get('/api/safras', { preHandler: produtor }, async (req) =>
-    todos(
-      db,
-      `SELECT s.*, (SELECT p.id FROM pedidos p WHERE p.safra_id = s.id AND p.status <> 'cancelado') AS pedido_id
-         FROM safras s WHERE s.produtor_id = ? ORDER BY s.criado_em DESC LIMIT 100`,
-      req.user.sub,
-    ),
-  );
+  app.get('/api/safras', { preHandler: produtor }, async (req) => listarSafras(ctx, req.user.sub));
 
   app.post('/api/safras', { preHandler: produtor }, async (req, rep) => {
     const d = z

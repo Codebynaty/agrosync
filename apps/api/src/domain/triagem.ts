@@ -176,3 +176,17 @@ export function classificarSafra(culturaId: string, c: Caracteristicas): Resulta
 }
 
 export const ROTULO_CLASSE = ROTULOS;
+export const AJUSTE_PRECO_CLASSE = AJUSTE_PRECO;
+
+/**
+ * Valor estimado de um lote: cotação do dia × quantidade, ajustado pela classe de
+ * qualidade da triagem (A vale mais, C/refugo valem menos). Sem classe — ou com a
+ * foto marcada para "rever" — o ajuste é zero. Puro e determinístico, como o
+ * classificador: app, bot e painel calculam daqui para mostrar o mesmo número.
+ */
+export function valorEstimado(precoCentavosKg: number, quantidadeKg: number, classe?: ClasseSafra | null) {
+  const brutoCentavos = Math.round(precoCentavosKg * quantidadeKg);
+  const ajustePct = classe ? AJUSTE_PRECO[classe] : 0;
+  const ajustadoCentavos = Math.round((brutoCentavos * (100 + ajustePct)) / 100);
+  return { brutoCentavos, ajustadoCentavos, ajustePct };
+}

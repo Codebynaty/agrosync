@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classificarSafra, type Caracteristicas } from '../src/domain/triagem.js';
+import { classificarSafra, valorEstimado, type Caracteristicas } from '../src/domain/triagem.js';
 
 /** Foto boa por padrão; cada teste sobrepõe só o que importa. */
 function foto(sobre: Partial<Caracteristicas> = {}): Caracteristicas {
@@ -65,5 +65,29 @@ describe('triagem visual da safra', () => {
   it('cultura desconhecida usa o perfil padrão sem quebrar', () => {
     const r = classificarSafra('abacaxi', foto({ amarelo: 0.6, verde: 0.2 }));
     expect(['A', 'B', 'C', 'refugo', 'rever']).toContain(r.classe);
+  });
+});
+
+describe('valor estimado por qualidade', () => {
+  it('classe A valoriza +10% e C desvaloriza -15% sobre o preço do dia', () => {
+    const a = valorEstimado(500, 100, 'A'); // 500 c/kg × 100 kg = R$ 500,00 bruto
+    expect(a.brutoCentavos).toBe(50_000);
+    expect(a.ajustePct).toBe(10);
+    expect(a.ajustadoCentavos).toBe(55_000);
+
+    const c = valorEstimado(500, 100, 'C');
+    expect(c.ajustePct).toBe(-15);
+    expect(c.ajustadoCentavos).toBe(42_500);
+  });
+
+  it('sem classe (ou foto a rever) não aplica ajuste', () => {
+    expect(valorEstimado(500, 100, null)).toMatchObject({ ajustePct: 0, ajustadoCentavos: 50_000 });
+    expect(valorEstimado(500, 100, 'rever')).toMatchObject({ ajustePct: 0, ajustadoCentavos: 50_000 });
+  });
+
+  it('melhor classe vale mais que pior para o mesmo lote', () => {
+    const extra = valorEstimado(800, 250, 'A').ajustadoCentavos;
+    const refugo = valorEstimado(800, 250, 'refugo').ajustadoCentavos;
+    expect(extra).toBeGreaterThan(refugo);
   });
 });

@@ -37,6 +37,10 @@ export type Safra = {
   triagem_pontuacao: number | null;
   triagem_maturidade: string | null;
   triagem_miniatura: string | null;
+  preco_centavos_kg?: number;
+  valor_bruto_centavos?: number;
+  valor_estimado_centavos?: number;
+  ajuste_pct?: number;
 };
 
 export type Alerta = { id: string; tipo: string; canal: string; titulo: string; mensagem: string; lido: number; criado_em: string };
