@@ -7,6 +7,7 @@ import type { StatusPedido } from '../domain/estados.js';
 import { planejarCarga, type ParadaFrete } from '../domain/frete.js';
 import { distanciaKm, type Ponto } from '../domain/geo.js';
 import { dataLocal, formatarDataBR, somarDias } from '../domain/tempo.js';
+import { valorEstimado, type ClasseSafra } from '../domain/triagem.js';
 import { notificar, type TipoAlerta } from './alertas.js';
 import { agoraISO, conflito, invalido, naoEncontrado, proibido, type Contexto } from './contexto.js';
 import { transitarCarga, transitarPedido } from './transicoes.js';
@@ -141,6 +142,36 @@ function carregarParadas(ctx: Contexto, pedidoIds: string[]) {
       WHERE p.id IN (${marc})`,
     ...pedidoIds,
   );
+}
+
+export type ValorPedido = { valorEstimadoCentavos: number; ajustePct: number; classe: ClasseSafra | null };
+
+/**
+ * Valor estimado da safra embarcada por pedido (cotação do dia × kg × ajuste da classe da triagem)
+ * e o total por carga. Mostra "quanto vale o caminhão" e quanto cada produtor leva nele.
+ */
+export async function valoresDasCargas(
+  ctx: Contexto,
+  cargaIds: string[],
+): Promise<{ porPedido: Record<string, ValorPedido>; totalPorCarga: Record<string, number> }> {
+  const porPedido: Record<string, ValorPedido> = {};
+  const totalPorCarga: Record<string, number> = {};
+  if (!cargaIds.length) return { porPedido, totalPorCarga };
+  const marc = cargaIds.map(() => '?').join(',');
+  const linhas = todos<{ carga_id: string; pedido_id: string; cultura: string; volume_kg: number; classe: ClasseSafra | null }>(
+    ctx.db,
+    `SELECT p.carga_id, p.id AS pedido_id, p.cultura, p.volume_kg, s.triagem_classe AS classe
+       FROM pedidos p LEFT JOIN safras s ON s.id = p.safra_id
+      WHERE p.carga_id IN (${marc})`,
+    ...cargaIds,
+  );
+  const cot = Object.fromEntries((await ctx.cotacoes.cotacoes(hoje(ctx))).map((c) => [c.cultura, c.precoCentavosKg]));
+  for (const l of linhas) {
+    const v = valorEstimado(cot[l.cultura] ?? 0, l.volume_kg, l.classe);
+    porPedido[l.pedido_id] = { valorEstimadoCentavos: v.ajustadoCentavos, ajustePct: v.ajustePct, classe: l.classe };
+    totalPorCarga[l.carga_id] = (totalPorCarga[l.carga_id] ?? 0) + v.ajustadoCentavos;
+  }
+  return { porPedido, totalPorCarga };
 }
 
 /** Cria a carga, o rateio e move os pedidos para "agrupado". Deve rodar dentro de transação. */

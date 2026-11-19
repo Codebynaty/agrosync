@@ -20,6 +20,7 @@ import {
   criarPedido,
   entregarCarga,
   freteIndividual,
+  valoresDasCargas,
 } from './services/fretes.js';
 import { executarJobs } from './services/jobs.js';
 import { painelCooperativa, painelProdutor } from './services/painel.js';
@@ -249,7 +250,7 @@ export function registrarRotas(app: FastifyInstance, ctx: Contexto) {
   });
 
   // ------------------------------------------------------------ cargas
-  const detalheCarga = (id: string) => {
+  const detalheCarga = async (id: string) => {
     const c = um<Record<string, unknown> & { rota_json: string }>(
       db,
       `SELECT c.*, d.nome AS destino_nome, d.municipio AS destino_municipio, d.lat AS destino_lat, d.lng AS destino_lng, u.nome AS motorista_nome
@@ -261,8 +262,15 @@ export function registrarRotas(app: FastifyInstance, ctx: Contexto) {
       todos<{ id: string; status: string }>(db, 'SELECT id, status FROM pedidos WHERE carga_id = ?', id).map((p) => [p.id, p.status]),
     );
     const { rota_json, ...resto } = c;
-    const paradas = (JSON.parse(rota_json) as { pedidoId: string }[]).map((p) => ({ ...p, status: status[p.pedidoId] ?? 'removido' }));
-    return { ...resto, paradas };
+    const { porPedido, totalPorCarga } = await valoresDasCargas(ctx, [id]);
+    const paradas = (JSON.parse(rota_json) as { pedidoId: string }[]).map((p) => ({
+      ...p,
+      status: status[p.pedidoId] ?? 'removido',
+      valorEstimadoCentavos: porPedido[p.pedidoId]?.valorEstimadoCentavos ?? 0,
+      ajustePct: porPedido[p.pedidoId]?.ajustePct ?? 0,
+      classe: porPedido[p.pedidoId]?.classe ?? null,
+    }));
+    return { ...resto, paradas, valor_estimado_total_centavos: totalPorCarga[id] ?? 0 };
   };
 
   app.get('/api/cargas', { preHandler: exigir('motorista', 'cooperativa') }, async (req) => {
@@ -270,9 +278,12 @@ export function registrarRotas(app: FastifyInstance, ctx: Contexto) {
                          c.motorista_id, d.nome AS destino_nome, u.nome AS motorista_nome,
                          (SELECT COUNT(*) FROM pedidos p WHERE p.carga_id = c.id) AS paradas
                     FROM cargas c JOIN destinos d ON d.id = c.destino_id LEFT JOIN usuarios u ON u.id = c.motorista_id`;
-    return req.user.papel === 'motorista'
-      ? todos(db, `${base} WHERE c.status = 'aberta' OR c.motorista_id = ? ORDER BY c.data_coleta, c.criado_em`, req.user.sub)
-      : todos(db, `${base} ORDER BY c.criado_em DESC LIMIT 200`);
+    const linhas =
+      req.user.papel === 'motorista'
+        ? todos<{ id: string }>(db, `${base} WHERE c.status = 'aberta' OR c.motorista_id = ? ORDER BY c.data_coleta, c.criado_em`, req.user.sub)
+        : todos<{ id: string }>(db, `${base} ORDER BY c.criado_em DESC LIMIT 200`);
+    const { totalPorCarga } = await valoresDasCargas(ctx, linhas.map((l) => l.id));
+    return linhas.map((l) => ({ ...l, valor_estimado_total_centavos: totalPorCarga[l.id] ?? 0 }));
   });
 
   app.get('/api/cargas/:id', { preHandler: exigir('motorista', 'cooperativa') }, async (req) => detalheCarga(IdParams.parse(req.params).id));

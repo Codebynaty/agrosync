@@ -235,6 +235,31 @@ describe('fluxo do frete coletivo', () => {
     const p2 = await colheitaComPedido(t2);
     expect(p2.status).toBe('agrupado');
   });
+
+  it('a carga expõe o valor estimado das safras embarcadas, ajustado pela qualidade', async () => {
+    const [t1, tm, tc] = await Promise.all(['5511900000001', '5511900000011', '5511900000021'].map(login));
+    const fotoBoa = {
+      caracteristicas: { vermelho: 0.85, laranja: 0, amarelo: 0, verde: 0, marrom: 0, escuro: 0, claro: 0, cobertura: 0.85, nitidez: 0.8, brilho: 0.5 },
+      miniatura: 'data:image/jpeg;base64,/9j/abc',
+    };
+    const s = (await req(t1).post('/api/safras', { cultura: 'tomate', quantidadeKg: 500, triagem: fotoBoa })).json();
+    expect(s.triagem_classe).toBe('A');
+    const p = (await req(t1).post('/api/pedidos', { safraId: s.id, destinoId: 'ceagesp', dataDesejada: AMANHA })).json();
+    const cargaId = (await req(t1).post(`/api/pedidos/${p.id}/frete-individual`)).json().cargaId;
+
+    const preco = ((await req(t1).get('/api/cotacoes')).json() as { cultura: string; precoCentavosKg: number }[]).find((c) => c.cultura === 'tomate')!.precoCentavosKg;
+    const esperado = Math.round(preco * 500 * 1.1); // classe A valoriza +10%
+
+    const det = (await req(tm).get(`/api/cargas/${cargaId}`)).json();
+    expect(det.valor_estimado_total_centavos).toBe(esperado);
+    const parada = (det.paradas as { pedidoId: string; classe: string; ajustePct: number; valorEstimadoCentavos: number }[]).find((x) => x.pedidoId === p.id)!;
+    expect(parada.classe).toBe('A');
+    expect(parada.ajustePct).toBe(10);
+    expect(parada.valorEstimadoCentavos).toBe(esperado);
+
+    const naLista = ((await req(tc).get('/api/cargas')).json() as { id: string; valor_estimado_total_centavos: number }[]).find((c) => c.id === cargaId)!;
+    expect(naLista.valor_estimado_total_centavos).toBe(esperado);
+  });
 });
 
 describe('webhooks Pix', () => {

@@ -57,6 +57,7 @@ export type CargaResumo = {
   destino_nome: string;
   motorista_nome: string | null;
   paradas: number;
+  valor_estimado_total_centavos: number;
 };
 
 export type Parada = {
@@ -70,6 +71,9 @@ export type Parada = {
   lat: number;
   lng: number;
   status: string;
+  valorEstimadoCentavos: number;
+  ajustePct: number;
+  classe: string | null;
 };
 
 export type CargaDetalhe = Omit<CargaResumo, 'paradas'> & {

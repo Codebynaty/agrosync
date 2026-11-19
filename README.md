@@ -238,6 +238,7 @@ sequenceDiagram
 
 **Custo do frete** (parâmetros em `apps/api/src/domain/frete.ts`): taxa fixa + taxa por parada + R$/km. A distância de estrada é a distância em linha reta × 1,3.
 **Rateio:** proporcional a *volume × distância até o destino*, em centavos inteiros pelo método do maior resto. Tem um teto: ninguém paga mais do que pagaria sozinho, e o excedente é redistribuído entre os demais.
+**Valor da carga:** cada carga mostra quanto vale a mercadoria embarcada (`valoresDasCargas` em `services/fretes.ts`): a cotação do dia × kg de cada safra, ajustada pela classe da triagem (A +10 %, C −15 %…). O detalhe da carga traz o valor por produtor e o total — o motorista e a cooperativa veem "quanto vale o caminhão" e cada produtor vê o que leva nele.
 
 ### Máquinas de estado
 
@@ -321,7 +322,7 @@ Garantias no próprio banco: `UNIQUE` em `pedidos(safra_id)` para pedidos ativos
 
 ## Confiabilidade: cenários testados
 
-`npm test` roda **76 testes automatizados** (Vitest). Todos passam.
+`npm test` roda **77 testes automatizados** (Vitest). Todos passam.
 
 | Área | Cenário | Resultado esperado |
 |---|---|---|

@@ -18,6 +18,9 @@ export function CartaoCarga({ c }: { c: CargaResumo }) {
         Frete <b>{brl(c.custo_total_centavos)}</b>
         {c.paradas > 1 && <span className="muted"> · produtores economizam {brl(c.custo_individual_total_centavos - c.custo_total_centavos)}</span>}
       </div>
+      {c.valor_estimado_total_centavos > 0 && (
+        <div className="peq">Carga vale ≈ <b>{brl(c.valor_estimado_total_centavos)}</b> <span className="muted">a preço de hoje</span></div>
+      )}
       {c.motorista_nome && <div className="muted peq">Motorista: {c.motorista_nome}</div>}
     </Link>
   );

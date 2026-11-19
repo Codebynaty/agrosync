@@ -96,6 +96,11 @@ export default function CargaDetalhePagina() {
               {dataBR(c.data_coleta)} · {kg(c.volume_kg)} · {Math.round(c.distancia_m / 1000)} km · frete {brl(c.custo_total_centavos)}
               {c.motorista_nome ? ` · ${c.motorista_nome}` : ''}
             </div>
+            {c.valor_estimado_total_centavos > 0 && (
+              <div className="peq">
+                Carga vale ≈ <b>{brl(c.valor_estimado_total_centavos)}</b> <span className="muted">a preço de hoje, ajustado pela qualidade das safras</span>
+              </div>
+            )}
             {el}
 
             <MapaRota
@@ -141,6 +146,12 @@ export default function CargaDetalhePagina() {
                     </div>
                     <div className="peq">{p.propriedadeNome} · {p.municipio}</div>
                     <div className="peq">{kg(p.volumeKg)} de {nomeCultura(p.cultura).toLowerCase()}</div>
+                    {p.valorEstimadoCentavos > 0 && (
+                      <div className="peq">
+                        ≈ <b>{brl(p.valorEstimadoCentavos)}</b>
+                        {p.ajustePct ? <span className="muted"> ({p.ajustePct > 0 ? '+' : ''}{p.ajustePct}% qualidade)</span> : null}
+                      </div>
+                    )}
                     <a className="peq" href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`} target="_blank" rel="noopener">Abrir no mapa ↗</a>
                   </div>
                 ))}
